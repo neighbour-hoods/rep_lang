@@ -1,0 +1,5 @@
+= poly-rs
+
+a Rust reimplementation 🦀 of sdiehl's example ML language.
+
+it's described in a http://dev.stephendiehl.com/fun/006_hindley_milner.html[tutorial] and the code for the constraint-generation version (which we follow) lives https://github.com/sdiehl/write-you-a-haskell/tree/master/chapter7/poly_constraints[here].
