@@ -1,4 +1,4 @@
-use super::syntax::{Binop, Binop::*, Decl, Expr, Expr::*, Lit, Lit::*, Name, Program};
+use super::syntax::{Binop, Binop::*, Decl, Expr, Expr::*, Lit, Lit::*, Name};
 use pretty::RcDoc;
 
 fn parens_if<T>(tst: bool, doc: RcDoc<T>) -> RcDoc<T> {
@@ -91,6 +91,17 @@ impl Name {
     pub fn ppr(&self, _: u64) -> RcDoc<()> {
         match &*self {
             Name(s) => RcDoc::text(s),
+        }
+    }
+}
+
+impl Decl {
+    pub fn ppr(&self, p: u64) -> RcDoc<()> {
+        match &*self {
+            Decl(nm, bd) => RcDoc::text("let ")
+                .append(RcDoc::text(nm))
+                .append(RcDoc::text(" = "))
+                .append(bd.ppr(p)),
         }
     }
 }

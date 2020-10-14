@@ -27,7 +27,7 @@ pub enum Binop {
     Eql,
 }
 
-pub struct Decl(String, Expr);
+pub struct Decl(pub String, pub Expr);
 
 pub struct Program {
     p_decls: Vec<Decl>,
