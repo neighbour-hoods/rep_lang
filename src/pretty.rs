@@ -42,7 +42,26 @@ impl Expr {
                     .append(RcDoc::text(" in "))
                     .append(bd_)
             }
-            _ => todo!("yap"),
+            Lit(x) => x.ppr(p),
+            If(tst, thn, els) => {
+                let docs = vec![
+                    RcDoc::text("if "),
+                    tst.ppr(p),
+                    RcDoc::text(" then "),
+                    thn.ppr(p),
+                    RcDoc::text(" else "),
+                    els.ppr(p),
+                ];
+                parens_if(p > 0, RcDoc::concat(docs))
+            }
+            Fix(x) => {
+                let doc = RcDoc::text("fix ").append(x.ppr(p));
+                parens_if(p > 0, doc)
+            }
+            Op(op, x, y) => {
+                let docs = vec![op.ppr(p), x.ppr(p), y.ppr(p)];
+                parens_if(p > 0, RcDoc::intersperse(docs, sp!()))
+            }
         }
     }
 }
