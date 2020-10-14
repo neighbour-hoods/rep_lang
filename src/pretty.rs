@@ -28,7 +28,8 @@ impl Expr {
             Lam(nm, bd) => {
                 let nm_ = nm.ppr(p);
                 let bd_ = bd.ppr(p);
-                RcDoc::text("\\ ").append(nm_).append(sp!()).append(bd_)
+                let arr = RcDoc::text(" -> ");
+                RcDoc::text("\\\\").append(nm_).append(arr).append(bd_)
             }
             Let(nm, e, bd) => {
                 let nm_ = nm.ppr(p);

@@ -1,5 +1,7 @@
+#[derive(Clone)]
 pub struct Name(pub String);
 
+#[derive(Clone)]
 pub enum Expr {
     Var(Name),
     App(Box<Expr>, Box<Expr>),
@@ -11,11 +13,13 @@ pub enum Expr {
     Op(Binop, Box<Expr>, Box<Expr>),
 }
 
+#[derive(Clone)]
 pub enum Lit {
     LInt(u64),
     LBool(bool),
 }
 
+#[derive(Clone)]
 pub enum Binop {
     Add,
     Sub,

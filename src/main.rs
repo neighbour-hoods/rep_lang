@@ -4,7 +4,9 @@ use Expr::*;
 fn main() {
     println!("hello, poly & Rust!");
 
-    let e = Var(Name("hi".to_string()));
-    let doc = e.ppr(0);
+    let n = Name("hi".to_string());
+    let e = Lam(n.clone(), Box::new(Var(n)));
+    let e2 = App(Box::new(e.clone()), Box::new(e));
+    let doc = e2.ppr(0);
     println!("{}", to_pretty(doc, 80));
 }
