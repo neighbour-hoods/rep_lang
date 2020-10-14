@@ -1,4 +1,4 @@
-use super::syntax::{Binop, Binop::*, Decl, Expr, Expr::*, Lit, Lit::*, Name};
+use super::syntax::{PrimOp, PrimOp::*, Decl, Expr, Expr::*, Lit, Lit::*, Name};
 use pretty::RcDoc;
 
 fn parens_if<T>(tst: bool, doc: RcDoc<T>) -> RcDoc<T> {
@@ -58,10 +58,7 @@ impl Expr {
                 let doc = RcDoc::text("fix ").append(x.ppr(p));
                 parens_if(p > 0, doc)
             }
-            Op(op, x, y) => {
-                let docs = vec![op.ppr(p), x.ppr(p), y.ppr(p)];
-                parens_if(p > 0, RcDoc::intersperse(docs, sp!()))
-            }
+            Prim(op) => op.ppr(p)
         }
     }
 }
@@ -76,7 +73,7 @@ impl Lit {
     }
 }
 
-impl Binop {
+impl PrimOp {
     pub fn ppr(&self, _: u64) -> RcDoc<()> {
         match *self {
             Add => RcDoc::text("+"),

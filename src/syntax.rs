@@ -10,7 +10,7 @@ pub enum Expr {
     Lit(Lit),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Fix(Box<Expr>),
-    Op(Binop, Box<Expr>, Box<Expr>),
+    Prim(PrimOp),
 }
 
 #[derive(Clone)]
@@ -20,7 +20,7 @@ pub enum Lit {
 }
 
 #[derive(Clone)]
-pub enum Binop {
+pub enum PrimOp {
     Add,
     Sub,
     Mul,
