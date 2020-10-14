@@ -1,12 +1,8 @@
 use super::syntax::{PrimOp, PrimOp::*, Decl, Expr, Expr::*, Lit, Lit::*, Name};
 use pretty::RcDoc;
 
-fn parens_if<T>(tst: bool, doc: RcDoc<T>) -> RcDoc<T> {
-    if tst {
-        RcDoc::text("(").append(doc).append(RcDoc::text(")"))
-    } else {
-        doc
-    }
+fn parens<T>(doc: RcDoc<T>) -> RcDoc<T> {
+    RcDoc::text("(").append(doc).append(RcDoc::text(")"))
 }
 
 macro_rules! sp {
@@ -16,65 +12,58 @@ macro_rules! sp {
 }
 
 impl Expr {
-    pub fn ppr(&self, p: u64) -> RcDoc<()> {
+    pub fn ppr(&self) -> RcDoc<()> {
         match &*self {
-            Var(name) => name.ppr(p),
+            Var(name) => name.ppr(),
             App(fun, arg) => {
-                let tst = p > 0;
-                let fun_ = parens_if(tst, fun.ppr(p + 1));
-                let arg_ = arg.ppr(p);
-                fun_.append(sp!()).append(arg_)
+                let fun_ = fun.ppr();
+                let arg_ = arg.ppr();
+                parens(fun_.append(sp!()).append(arg_))
             }
             Lam(nm, bd) => {
-                let nm_ = nm.ppr(p);
-                let bd_ = bd.ppr(p);
-                let arr = RcDoc::text(" -> ");
-                RcDoc::text("\\\\").append(nm_).append(arr).append(bd_)
+                let nm_ = nm.ppr();
+                let bd_ = bd.ppr();
+                parens(RcDoc::text("lam [").append(nm_).append(RcDoc::text("] ")).append(bd_))
             }
             Let(nm, e, bd) => {
-                let nm_ = nm.ppr(p);
-                let e_ = e.ppr(p);
-                let bd_ = bd.ppr(p);
-                RcDoc::text("let ")
+                let nm_ = nm.ppr();
+                let e_ = e.ppr();
+                let bd_ = bd.ppr();
+                parens(RcDoc::text("let ([")
                     .append(nm_)
-                    .append(RcDoc::text(" = "))
+                    .append(sp!())
                     .append(e_)
-                    .append(RcDoc::text(" in "))
-                    .append(bd_)
+                    .append(RcDoc::text("]) "))
+                    .append(bd_))
             }
-            Lit(x) => x.ppr(p),
+            Lit(x) => x.ppr(),
             If(tst, thn, els) => {
                 let docs = vec![
-                    RcDoc::text("if "),
-                    tst.ppr(p),
-                    RcDoc::text(" then "),
-                    thn.ppr(p),
-                    RcDoc::text(" else "),
-                    els.ppr(p),
+                    RcDoc::text("if"),
+                    tst.ppr(),
+                    thn.ppr(),
+                    els.ppr(),
                 ];
-                parens_if(p > 0, RcDoc::concat(docs))
+                parens(RcDoc::intersperse(docs, sp!()))
             }
-            Fix(x) => {
-                let doc = RcDoc::text("fix ").append(x.ppr(p));
-                parens_if(p > 0, doc)
-            }
-            Prim(op) => op.ppr(p)
+            Fix(x) => parens(RcDoc::text("fix ").append(x.ppr())),
+            Prim(op) => op.ppr()
         }
     }
 }
 
 impl Lit {
-    pub fn ppr(&self, _: u64) -> RcDoc<()> {
+    pub fn ppr(&self) -> RcDoc<()> {
         match *self {
             LInt(i) => RcDoc::as_string(i),
-            LBool(true) => RcDoc::text("True"),
-            LBool(false) => RcDoc::text("False"),
+            LBool(true) => RcDoc::text("true"),
+            LBool(false) => RcDoc::text("false"),
         }
     }
 }
 
 impl PrimOp {
-    pub fn ppr(&self, _: u64) -> RcDoc<()> {
+    pub fn ppr(&self) -> RcDoc<()> {
         match *self {
             Add => RcDoc::text("+"),
             Sub => RcDoc::text("-"),
@@ -85,7 +74,7 @@ impl PrimOp {
 }
 
 impl Name {
-    pub fn ppr(&self, _: u64) -> RcDoc<()> {
+    pub fn ppr(&self) -> RcDoc<()> {
         match &*self {
             Name(s) => RcDoc::text(s),
         }
@@ -93,12 +82,12 @@ impl Name {
 }
 
 impl Decl {
-    pub fn ppr(&self, p: u64) -> RcDoc<()> {
+    pub fn ppr(&self) -> RcDoc<()> {
         match &*self {
             Decl(nm, bd) => RcDoc::text("let ")
                 .append(RcDoc::text(nm))
                 .append(RcDoc::text(" = "))
-                .append(bd.ppr(p)),
+                .append(bd.ppr()),
         }
     }
 }

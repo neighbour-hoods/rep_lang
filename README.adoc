@@ -3,3 +3,6 @@
 a Rust reimplementation 🦀 of sdiehl's example ML language.
 
 it's described in a http://dev.stephendiehl.com/fun/006_hindley_milner.html[tutorial] and the code for the constraint-generation version (which we follow) lives https://github.com/sdiehl/write-you-a-haskell/tree/master/chapter7/poly_constraints[here].
+
+it's no longer quite a "reimplementation", because the language syntax is different, and is more scheme-y.
+I decided this was easier to parse, and since my priority is learning Hindley-Milner, that seems wise.
