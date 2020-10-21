@@ -1,4 +1,4 @@
-use super::syntax::{PrimOp, PrimOp::*, Decl, Expr, Expr::*, Lit, Lit::*, Name};
+use super::syntax::{Decl, Expr, Expr::*, Lit, Lit::*, Name, PrimOp, PrimOp::*};
 use pretty::RcDoc;
 
 fn parens<T>(doc: RcDoc<T>) -> RcDoc<T> {
@@ -23,31 +23,33 @@ impl Expr {
             Lam(nm, bd) => {
                 let nm_ = nm.ppr();
                 let bd_ = bd.ppr();
-                parens(RcDoc::text("lam [").append(nm_).append(RcDoc::text("] ")).append(bd_))
+                parens(
+                    RcDoc::text("lam [")
+                        .append(nm_)
+                        .append(RcDoc::text("] "))
+                        .append(bd_),
+                )
             }
             Let(nm, e, bd) => {
                 let nm_ = nm.ppr();
                 let e_ = e.ppr();
                 let bd_ = bd.ppr();
-                parens(RcDoc::text("let ([")
-                    .append(nm_)
-                    .append(sp!())
-                    .append(e_)
-                    .append(RcDoc::text("]) "))
-                    .append(bd_))
+                parens(
+                    RcDoc::text("let ([")
+                        .append(nm_)
+                        .append(sp!())
+                        .append(e_)
+                        .append(RcDoc::text("]) "))
+                        .append(bd_),
+                )
             }
             Lit(x) => x.ppr(),
             If(tst, thn, els) => {
-                let docs = vec![
-                    RcDoc::text("if"),
-                    tst.ppr(),
-                    thn.ppr(),
-                    els.ppr(),
-                ];
+                let docs = vec![RcDoc::text("if"), tst.ppr(), thn.ppr(), els.ppr()];
                 parens(RcDoc::intersperse(docs, sp!()))
             }
             Fix(x) => parens(RcDoc::text("fix ").append(x.ppr())),
-            Prim(op) => op.ppr()
+            Prim(op) => op.ppr(),
         }
     }
 }
