@@ -14,19 +14,17 @@ impl Arbitrary for Expr {
                 let pairs = (f.clone(), x.clone())
                     .shrink()
                     .map(|(f_, x_)| Expr::App(f_, x_));
-                let fs = single_shrinker(*f.clone())
-                    .chain(f.shrink().map(|v| *v));
-                let xs = single_shrinker(*x.clone())
-                    .chain(x.shrink().map(|v| *v));
+                let fs = single_shrinker(*f.clone()).chain(f.shrink().map(|v| *v));
+                let xs = single_shrinker(*x.clone()).chain(x.shrink().map(|v| *v));
                 Box::new(pairs.chain(fs).chain(xs))
             }
             Expr::Lam(nm, bd) => {
                 let nm_ = nm.clone();
-                let chain = bd.clone()
-                        .shrink()
-                        .map(move |bd_| Expr::Lam(nm_.clone(), bd_));
-                let bds = single_shrinker(*bd.clone())
-                    .chain(bd.shrink().map(|v| *v));
+                let chain = bd
+                    .clone()
+                    .shrink()
+                    .map(move |bd_| Expr::Lam(nm_.clone(), bd_));
+                let bds = single_shrinker(*bd.clone()).chain(bd.shrink().map(|v| *v));
                 Box::new(chain.chain(bds))
             }
             Expr::Let(nm, e, bd) => {
@@ -34,28 +32,22 @@ impl Arbitrary for Expr {
                 let pairs = (e.clone(), bd.clone())
                     .shrink()
                     .map(move |(e_, bd_)| Expr::Let(nm_.clone(), e_, bd_));
-                let es = single_shrinker(*e.clone())
-                    .chain(e.shrink().map(|v| *v));
-                let bds = single_shrinker(*bd.clone())
-                    .chain(bd.shrink().map(|v| *v));
+                let es = single_shrinker(*e.clone()).chain(e.shrink().map(|v| *v));
+                let bds = single_shrinker(*bd.clone()).chain(bd.shrink().map(|v| *v));
                 Box::new(pairs.chain(es).chain(bds))
             }
             Expr::If(tst, thn, els) => {
                 let pairs = (tst.clone(), thn.clone(), els.clone())
                     .shrink()
                     .map(|(tst_, thn_, els_)| Expr::If(tst_, thn_, els_));
-                let tsts = single_shrinker(*tst.clone())
-                    .chain(tst.shrink().map(|v| *v));
-                let thns = single_shrinker(*thn.clone())
-                    .chain(thn.shrink().map(|v| *v));
-                let elss = single_shrinker(*els.clone())
-                    .chain(els.shrink().map(|v| *v));
+                let tsts = single_shrinker(*tst.clone()).chain(tst.shrink().map(|v| *v));
+                let thns = single_shrinker(*thn.clone()).chain(thn.shrink().map(|v| *v));
+                let elss = single_shrinker(*els.clone()).chain(els.shrink().map(|v| *v));
                 Box::new(pairs.chain(tsts).chain(thns).chain(elss))
             }
             Expr::Fix(bd) => {
                 let chain = bd.shrink().map(|bd_| Expr::Fix(bd_));
-                let bds = single_shrinker(*bd.clone())
-                    .chain(bd.shrink().map(|v| *v));
+                let bds = single_shrinker(*bd.clone()).chain(bd.shrink().map(|v| *v));
                 Box::new(chain.chain(bds))
             }
             _ => empty_shrinker(),

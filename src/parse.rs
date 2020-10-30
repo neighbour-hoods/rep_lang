@@ -1,7 +1,7 @@
 use combine::error::ParseError;
 use combine::parser::char::{char, digit, letter, spaces, string};
 use combine::stream::Stream;
-use combine::{attempt, between, choice, many1, optional, parser, Parser, not_followed_by};
+use combine::{attempt, between, choice, many1, not_followed_by, optional, parser, Parser};
 
 use super::syntax::*;
 
@@ -12,24 +12,11 @@ where
     // Necessary due to rust-lang/rust#24159
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
-    // A parser which skips past whitespace.
-    // Since we aren't interested in knowing that our expression parser
-    // could have accepted additional whitespace between the tokens we also silence the error.
-    let skip_spaces = || spaces().silent();
-
-    // Creates a parser which parses a char and skips any trailing whitespace
-    let lex_char = |c| char(c).skip(skip_spaces());
-
-    let word = || many1(letter()).skip(skip_spaces());
-    let integer = || many1(digit()).skip(skip_spaces());
-    let str_ = |x| string(x).skip(skip_spaces());
-
-    let name = || word().map(Name);
-    let var = name().map(Expr::Var);
     let l_bool = choice((
         str_("true").map(|_| Lit::LBool(true)),
         (str_("false").map(|_| Lit::LBool(false))),
-    )).skip(not_followed_by(letter()));
+    ))
+    .skip(not_followed_by(letter()));
     let l_int = (optional(char('-')), integer()).map(|t| {
         // TODO handle this error, even though it should be impossible
         let string: String = t.1;
@@ -74,7 +61,7 @@ where
     choice((
         attempt(lit),
         attempt(prim_op),
-        attempt(var),
+        attempt(var()),
         between(lex_char('('), lex_char(')'), parenthesized),
     ))
     .skip(skip_spaces())
@@ -93,4 +80,87 @@ parser! {
     {
         expr_()
     }
+}
+
+pub fn defn_<Input>() -> impl Parser<Input, Output = Defn>
+where
+    Input: Stream<Token = char>,
+    // Necessary due to rust-lang/rust#24159
+    Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+{
+    let defn_ = (str_("defn "), name(), expr()).map(|t| Defn(t.1, t.2));
+
+    between(lex_char('('), lex_char(')'), defn_).skip(skip_spaces())
+}
+
+parser! {
+    pub fn defn[Input]()(Input) -> Defn
+    where [Input: Stream<Token = char>]
+    {
+        defn_()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// helpers
+////////////////////////////////////////////////////////////////////////////////
+
+// Creates a parser which parses a char and skips any trailing whitespace
+fn lex_char<Input>(c: char) -> impl Parser<Input, Output = char>
+where
+    Input: Stream<Token = char>,
+    Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+{
+    char(c).skip(skip_spaces())
+}
+
+// A parser which skips past whitespace.
+// Since we aren't interested in knowing that our expression parser
+// could have accepted additional whitespace between the tokens we also silence the error.
+fn skip_spaces<Input>() -> impl Parser<Input, Output = ()>
+where
+    Input: Stream<Token = char>,
+    Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+{
+    spaces().silent()
+}
+
+fn word<Input>() -> impl Parser<Input, Output = String>
+where
+    Input: Stream<Token = char>,
+    Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+{
+    many1(letter()).skip(skip_spaces())
+}
+
+fn integer<Input>() -> impl Parser<Input, Output = String>
+where
+    Input: Stream<Token = char>,
+    Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+{
+    many1(digit()).skip(skip_spaces())
+}
+
+fn str_<'a, Input>(x: &'static str) -> impl Parser<Input, Output = &'a str>
+where
+    Input: Stream<Token = char>,
+    Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+{
+    string(x).skip(skip_spaces())
+}
+
+fn name<Input>() -> impl Parser<Input, Output = Name>
+where
+    Input: Stream<Token = char>,
+    Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+{
+    word().map(Name)
+}
+
+fn var<Input>() -> impl Parser<Input, Output = Expr>
+where
+    Input: Stream<Token = char>,
+    Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+{
+    name().map(Expr::Var)
 }

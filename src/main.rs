@@ -1,27 +1,45 @@
 use combine::parser::Parser;
-use poly::{parse::expr, pretty::*, syntax::Lit, syntax::*};
-use Expr::*;
+use combine::stream::easy;
+use rustyline::{error::ReadlineError, Editor};
+
+use poly::{env::*, infer::*, parse::expr, util::pretty::to_pretty};
 
 fn main() {
     println!("hello, poly & Rust!");
 
-    let n = || Name("hi".to_string());
-    let e = || Lam(n(), Box::new(Var(n())));
-    let e2 = || App(Box::new(e()), Box::new(e()));
-    let e3 = || Fix(Box::new(Prim(PrimOp::Add)));
-    let e4 = || {
-        If(
-            Box::new(Lit(Lit::LBool(true))),
-            Box::new(e2()),
-            Box::new(e3()),
-        )
+    let mut rl = Editor::<()>::new();
+    let (width, _height) = match rl.dimensions() {
+        None => panic!("output is not a tty"),
+        Some(dims) => dims,
     };
-    let e5 = || Var(Name("free".to_string()));
-    let e6 = || Let(Name("x".to_string()), Box::new(e5()), Box::new(e4()));
-    println!("{}", to_pretty(e6().ppr(), 80));
-
-    let s = to_pretty(e2().ppr(), 80);
-    println!("{}", &s);
-    let result = expr().parse(&s[..]);
-    println!("{:?}", result);
+    loop {
+        let readline = rl.readline("> ");
+        match readline {
+            Ok(line) => {
+                rl.add_history_entry(line.as_str());
+                match expr().parse(easy::Stream(&line[..])) {
+                    Err(err) => println!("parse error: {}", err),
+                    Ok((e, _)) => {
+                        println!("ast: {:?}\n", e);
+                        let env = Env::new();
+                        match infer_expr(env, e) {
+                            Err(err) => println!("type error: {:?}", err),
+                            Ok(sc) => {
+                                println!("scheme: {}", to_pretty(sc.ppr(), width));
+                            }
+                        }
+                    }
+                };
+            }
+            Err(ReadlineError::Interrupted) => continue,
+            Err(ReadlineError::Eof) => {
+                println!("\nbye!");
+                break;
+            }
+            Err(err) => {
+                println!("error: {:?}", err);
+                break;
+            }
+        }
+    }
 }

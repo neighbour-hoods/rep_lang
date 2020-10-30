@@ -1,15 +1,8 @@
-use super::syntax::{Decl, Expr, Expr::*, Lit, Lit::*, Name, PrimOp, PrimOp::*};
 use pretty::RcDoc;
 
-fn parens<T>(doc: RcDoc<T>) -> RcDoc<T> {
-    RcDoc::text("(").append(doc).append(RcDoc::text(")"))
-}
-
-macro_rules! sp {
-    () => {
-        RcDoc::text(" ")
-    };
-}
+use super::syntax::{Defn, Expr, Expr::*, Lit, Lit::*, Name, PrimOp, PrimOp::*};
+use crate::util::pretty::parens;
+use crate::sp;
 
 impl Expr {
     pub fn ppr(&self) -> RcDoc<()> {
@@ -83,19 +76,15 @@ impl Name {
     }
 }
 
-impl Decl {
+impl Defn {
     pub fn ppr(&self) -> RcDoc<()> {
         match &*self {
-            Decl(nm, bd) => RcDoc::text("let ")
-                .append(RcDoc::text(nm))
-                .append(RcDoc::text(" = "))
-                .append(bd.ppr()),
+            Defn(nm, bd) => parens(
+                RcDoc::text("defn ")
+                    .append(nm.ppr())
+                    .append(sp!())
+                    .append(bd.ppr()),
+            ),
         }
     }
-}
-
-pub fn to_pretty(doc: RcDoc<()>, width: usize) -> String {
-    let mut w = Vec::new();
-    doc.render(width, &mut w).unwrap();
-    String::from_utf8(w).unwrap()
 }
