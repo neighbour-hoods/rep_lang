@@ -1,6 +1,7 @@
 use quickcheck::{empty_shrinker, single_shrinker, Arbitrary, Gen};
 use rand::Rng;
 
+use crate::parse::reserved;
 use crate::syntax::*;
 
 impl Arbitrary for Expr {
@@ -113,11 +114,16 @@ impl Arbitrary for Lit {
 impl Arbitrary for Name {
     fn arbitrary<G: Gen>(g: &mut G) -> Name {
         let len = g.gen_range(3, 8);
-        let mut s = String::new();
-        for _ in 0..len {
-            s.push(gen_alpha_char(g));
+        let res = reserved();
+        loop {
+            let mut s = String::new();
+            for _ in 0..len {
+                s.push(gen_alpha_char(g));
+            }
+            if !res.contains(&s) {
+                return Name(s);
+            }
         }
-        Name(s)
     }
 }
 

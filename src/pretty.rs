@@ -1,8 +1,8 @@
 use pretty::RcDoc;
 
 use super::syntax::{Defn, Expr, Expr::*, Lit, Lit::*, Name, PrimOp, PrimOp::*};
-use crate::util::pretty::parens;
 use crate::sp;
+use crate::util::pretty::parens;
 
 impl Expr {
     pub fn ppr(&self) -> RcDoc<()> {

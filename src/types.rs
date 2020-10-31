@@ -1,7 +1,7 @@
 use pretty::RcDoc;
 
-use crate::util::pretty::parens;
 use crate::sp;
+use crate::util::pretty::parens;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash)]
 pub struct TV(pub String);
@@ -34,7 +34,9 @@ impl Scheme {
                     RcDoc::text("")
                 } else {
                     let vars: Vec<RcDoc<()>> = tvs.iter().map(|tv| tv.ppr()).collect();
-                    RcDoc::text("forall ").append(RcDoc::intersperse(vars, sp!())).append(RcDoc::text(". "))
+                    RcDoc::text("forall ")
+                        .append(RcDoc::intersperse(vars, sp!()))
+                        .append(RcDoc::text(". "))
                 };
 
                 quantifier.append(ty.ppr())
@@ -46,7 +48,7 @@ impl Scheme {
 impl TV {
     pub fn ppr(&self) -> RcDoc<()> {
         match self {
-            TV(s) => RcDoc::text(s)
+            TV(s) => RcDoc::text(s),
         }
     }
 }

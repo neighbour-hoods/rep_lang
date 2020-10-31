@@ -330,8 +330,12 @@ fn unify_many(mut ts_1: Vec<Type>, mut ts_2: Vec<Type>) -> Result<Subst, TypeErr
             (None, None) => Ok(HashMap::new()),
             (Some(t1), Some(t2)) => {
                 let subst_1 = unifies(t1, t2)?;
-                for t in ts_1.iter_mut() { *t = t.clone().apply(&subst_1) }
-                for t in ts_2.iter_mut() { *t = t.clone().apply(&subst_1) }
+                for t in ts_1.iter_mut() {
+                    *t = t.clone().apply(&subst_1)
+                }
+                for t in ts_2.iter_mut() {
+                    *t = t.clone().apply(&subst_1)
+                }
                 let subst_2 = unify_many(ts_1, ts_2)?;
                 Ok(compose(subst_2, subst_1))
             }
