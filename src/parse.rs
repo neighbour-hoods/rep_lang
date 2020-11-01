@@ -33,22 +33,37 @@ where
     let p_eql = res_str("==").map(|_| PrimOp::Eql);
     let prim_op = choice((p_add, p_sub, p_mul, p_eql)).map(|v| Expr::Prim(v));
 
-    let app = (expr(), expr()).map(|t| Expr::App(Box::new(t.0), Box::new(t.1)));
+    let app = (expr(), many1::<Vec<_>, _, _>(expr())).map(|t| {
+        let applicator = |fun, arg: Expr| Expr::App(Box::new(fun), Box::new(arg));
+        t.1.into_iter().fold(t.0, applicator)
+    });
 
-    let lam = (res_str("lam"), lex_char('['), name(), lex_char(']'), expr())
-        .map(|t| Expr::Lam(t.2, Box::new(t.4)));
-
-    let let_ = (
-        res_str("let"),
-        lex_char('('),
+    let lam = (
+        res_str("lam"),
         lex_char('['),
-        name(),
-        expr(),
+        many1::<Vec<_>, _, _>(name()),
         lex_char(']'),
-        lex_char(')'),
         expr(),
     )
-        .map(|t| Expr::Let(t.3, Box::new(t.4), Box::new(t.7)));
+        .map(|t| {
+            let applicator = |bd, nm: Name| Expr::Lam(nm, Box::new(bd));
+            t.2.into_iter().rev().fold(t.4, applicator)
+        });
+
+    let let_ = {
+        let binder = (lex_char('['), name(), expr(), lex_char(']')).map(|t| (t.1, t.2));
+        (
+            res_str("let"),
+            lex_char('('),
+            many1::<Vec<_>, _, _>(binder),
+            lex_char(')'),
+            expr(),
+        )
+            .map(|t| {
+                let applicator = |bd, (nm, e)| Expr::Let(nm, Box::new(e), Box::new(bd));
+                t.2.into_iter().rev().fold(t.4, applicator)
+            })
+    };
 
     let if_ = (res_str("if"), expr(), expr(), expr())
         .map(|t| Expr::If(Box::new(t.1), Box::new(t.2), Box::new(t.3)));
