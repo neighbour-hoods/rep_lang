@@ -19,13 +19,17 @@ fn main() {
                 rl.add_history_entry(line.as_str());
                 match expr().parse(easy::Stream(&line[..])) {
                     Err(err) => println!("parse error: {}", err),
-                    Ok((e, _)) => {
-                        println!("ast: {:?}\n", e);
-                        let env = Env::new();
-                        match infer_expr(env, e) {
-                            Err(err) => println!("type error: {:?}", err),
-                            Ok(sc) => {
-                                println!("scheme: {}", to_pretty(sc.ppr(), width));
+                    Ok((e, extra_input)) => {
+                        if extra_input != easy::Stream("") {
+                            println!("error: unconsumed input: {:?}", extra_input);
+                        } else {
+                            println!("ast: {:?}\n", e);
+                            let env = Env::new();
+                            match infer_expr(env, e) {
+                                Err(err) => println!("type error: {:?}", err),
+                                Ok(sc) => {
+                                    println!("scheme: {}", to_pretty(sc.ppr(), width));
+                                }
                             }
                         }
                     }
