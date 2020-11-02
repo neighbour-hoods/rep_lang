@@ -1,5 +1,6 @@
 use quickcheck::{empty_shrinker, single_shrinker, Arbitrary, Gen};
 use rand::Rng;
+use std::iter;
 
 use crate::parse::reserved;
 use crate::syntax::*;
@@ -116,10 +117,7 @@ impl Arbitrary for Name {
         let len = g.gen_range(3, 8);
         let res = reserved();
         loop {
-            let mut s = String::new();
-            for _ in 0..len {
-                s.push(gen_alpha_char(g));
-            }
+            let s = iter::repeat(gen_alpha_char(g)).take(len).collect();
             if !res.contains(&s) {
                 return Name(s);
             }
