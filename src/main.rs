@@ -4,8 +4,17 @@ use rustyline::{error::ReadlineError, Editor};
 
 use poly::{env::*, infer::*, parse::expr, util::pretty::to_pretty};
 
+const BANNER: &'static str = r#"
+                 __
+    ____  ____  / /_  __      __________
+   / __ \/ __ \/ / / / /_____/ ___/ ___/
+  / /_/ / /_/ / / /_/ /_____/ /  (__  )
+ / .___/\____/_/\__, /     /_/  /____/
+/_/            /____/
+"#;
+
 fn main() {
-    println!("hello, poly & Rust!");
+    println!("{}", BANNER);
 
     let mut rl = Editor::<()>::new();
     let (width, _height) = match rl.dimensions() {
