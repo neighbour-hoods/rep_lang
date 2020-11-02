@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::iter::repeat_with;
+use std::iter;
 
 use super::{env::*, syntax::*, types::*};
 
@@ -254,7 +254,7 @@ fn close_over(ty: Type) -> Scheme {
 fn normalize(sc: Scheme) -> Scheme {
     let Scheme(_, body) = sc;
     let hm = {
-        let mut vars = fv(body.clone());
+        let mut vars: Vec<TV> = free_type_vars(body.clone()).collect();
         vars.dedup();
         let mut hm = HashMap::new();
         let mut is = InferState::new();
@@ -283,16 +283,11 @@ fn norm_type(hm: &HashMap<TV, TV>, ty: Type) -> Type {
     }
 }
 
-fn fv(ty: Type) -> Vec<TV> {
+fn free_type_vars(ty: Type) -> Box<dyn Iterator<Item = TV>> {
     match ty {
-        Type::TVar(a) => vec![a],
-        Type::TArr(a, b) => {
-            let mut a_fv = fv(*a);
-            let mut b_fv = fv(*b);
-            a_fv.append(&mut b_fv);
-            a_fv
-        }
-        Type::TCon(_) => Vec::new(),
+        Type::TVar(a) => Box::new(iter::once(a)),
+        Type::TArr(a, b) => Box::new(free_type_vars(*a).chain(free_type_vars(*b))),
+        Type::TCon(_) => Box::new(iter::empty()),
     }
 }
 
@@ -383,7 +378,7 @@ fn instantiate(is: &mut InferState, sc: &Scheme) -> Result<Type, TypeError> {
             let subst: Subst = xs
                 .clone()
                 .into_iter()
-                .zip(repeat_with(|| is.fresh()))
+                .zip(iter::repeat_with(|| is.fresh()))
                 .collect();
             Ok(ty.clone().apply(&subst))
         }
