@@ -63,9 +63,9 @@ impl Env {
         hm.keys().map(|x| x.clone()).collect()
     }
 
-    pub fn replace(&mut self, nm: Name, sc: Scheme) {
+    pub fn replace(&mut self, nm: &Name, sc: Scheme) {
         self.remove(nm.clone());
-        self.extend(nm, sc);
+        self.extend(nm.clone(), sc);
     }
 }
 

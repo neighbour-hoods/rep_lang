@@ -16,3 +16,11 @@ rustyline = "6.3.0"
 quickcheck = "0.9.2"
 quickcheck_macros = "0.9.1"
 rand = "0.7"
+
+[[bin]]
+name = "polyi"
+path = "src/bin/polyi.rs"
+
+[[bin]]
+name = "poly"
+path = "src/bin/poly.rs"

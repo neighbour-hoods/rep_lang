@@ -11,6 +11,8 @@ pub enum Type {
     TVar(TV),
     TCon(String),
     TArr(Box<Type>, Box<Type>),
+    TList(Box<Type>),
+    TPair(Box<Type>, Box<Type>),
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
@@ -24,6 +26,23 @@ pub fn type_int() -> Type {
 
 pub fn type_bool() -> Type {
     Type::TCon("Bool".to_string())
+}
+
+pub fn type_list(ty: Type) -> Type {
+    Type::TList(Box::new(ty))
+}
+
+pub fn type_arr(t1: Type, t2: Type) -> Type {
+    Type::TArr(Box::new(t1), Box::new(t2))
+}
+
+pub fn type_pair(t1: Type, t2: Type) -> Type {
+    Type::TPair(Box::new(t1), Box::new(t2))
+}
+
+pub fn type_arr_multi(args: Vec<Type>, ret: Type) -> Type {
+    let applicator = |bd, arg: Type| Type::TArr(Box::new(arg), Box::new(bd));
+    args.into_iter().rev().fold(ret, applicator)
 }
 
 impl Scheme {
@@ -59,6 +78,8 @@ impl Type {
             Type::TVar(tv) => tv.ppr(),
             Type::TCon(s) => RcDoc::text(s),
             Type::TArr(a, b) => parens(a.ppr().append(RcDoc::text(" -> ")).append(b.ppr())),
+            Type::TList(x) => parens(RcDoc::text("List ").append(x.ppr())),
+            Type::TPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
         }
     }
 }

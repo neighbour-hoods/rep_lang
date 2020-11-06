@@ -49,6 +49,15 @@ impl Type {
                 let t2_ = t2.apply(subst);
                 Type::TArr(Box::new(t1_), Box::new(t2_))
             }
+            Type::TList(ty) => {
+                let ty_ = ty.apply(subst);
+                Type::TList(Box::new(ty_))
+            }
+            Type::TPair(t1, t2) => {
+                let t1_ = t1.apply(subst);
+                let t2_ = t2.apply(subst);
+                Type::TPair(Box::new(t1_), Box::new(t2_))
+            }
         }
     }
 
@@ -65,6 +74,11 @@ impl Type {
                 // TODO figure out if this is performing unnecessary copying
                 // I think we could just iterate through hs2 and insert values
                 // into `t1.ftv()`
+                t1.ftv().union(&hs2).map(|x| x.clone()).collect()
+            }
+            Type::TList(ty) => ty.ftv(),
+            Type::TPair(t1, t2) => {
+                let hs2 = t2.ftv();
                 t1.ftv().union(&hs2).map(|x| x.clone()).collect()
             }
         }
@@ -151,7 +165,11 @@ pub enum TypeError {
     UnificationMismatch(Vec<Type>, Vec<Type>),
 }
 
-fn infer(env: Env, is: &mut InferState, expr: Expr) -> Result<(Type, Vec<Constraint>), TypeError> {
+fn infer(
+    env: &Env,
+    is: &mut InferState,
+    expr: &Expr,
+) -> Result<(Type, Vec<Constraint>), TypeError> {
     match expr {
         Expr::Lit(lit) => Ok((infer_lit(lit), Vec::new())),
         Expr::Var(nm) => {
@@ -166,13 +184,13 @@ fn infer(env: Env, is: &mut InferState, expr: Expr) -> Result<(Type, Vec<Constra
                 le.replace(nm, sc);
                 le
             };
-            let (typ, csts) = infer(local_env, is, *bd)?;
+            let (typ, csts) = infer(&local_env, is, bd)?;
             let ret = Type::TArr(Box::new(tv), Box::new(typ));
             Ok((ret, csts))
         }
         Expr::App(e1, e2) => {
-            let (t1, mut csts1) = infer(env.clone(), is, *e1)?;
-            let (t2, mut csts2) = infer(env, is, *e2)?;
+            let (t1, mut csts1) = infer(env, is, e1)?;
+            let (t2, mut csts2) = infer(env, is, e2)?;
             let tv = is.fresh();
             let cst = Constraint(t1, Type::TArr(Box::new(t2), Box::new(tv.clone())));
             csts1.append(&mut csts2);
@@ -180,20 +198,20 @@ fn infer(env: Env, is: &mut InferState, expr: Expr) -> Result<(Type, Vec<Constra
             Ok((tv, csts1))
         }
         Expr::Let(nm, e, bd) => {
-            let (t_e, mut csts_e) = infer(env.clone(), is, *e)?;
+            let (t_e, mut csts_e) = infer(env, is, e)?;
             let subst = run_solve(csts_e.to_vec())?;
             let sc = generalize(env.clone().apply(&subst), t_e.apply(&subst));
             let local_env = {
-                let mut le = env;
+                let mut le = env.clone();
                 le.replace(nm, sc);
                 le.apply(&subst)
             };
-            let (t_bd, mut csts_bd) = infer(local_env, is, *bd)?;
+            let (t_bd, mut csts_bd) = infer(&local_env, is, bd)?;
             csts_e.append(&mut csts_bd);
             Ok((t_bd, csts_e))
         }
         Expr::Fix(bd) => {
-            let (t_bd, mut csts_bd) = infer(env.clone(), is, *bd)?;
+            let (t_bd, mut csts_bd) = infer(env, is, bd)?;
             let tv = is.fresh();
             let cst = Constraint(t_bd, Type::TArr(Box::new(tv.clone()), Box::new(tv.clone())));
             csts_bd.push(cst);
@@ -203,12 +221,12 @@ fn infer(env: Env, is: &mut InferState, expr: Expr) -> Result<(Type, Vec<Constra
             // TODO figure out if this is borked. `poly` takes the approach of
             // wrapping primop application, whereas I allow primops to be first
             // class functions.
-            Ok((infer_primop(op), Vec::new()))
+            Ok((infer_primop(is, op), Vec::new()))
         }
         Expr::If(tst, thn, els) => {
-            let (t_tst, mut csts_tst) = infer(env.clone(), is, *tst)?;
-            let (t_thn, mut csts_thn) = infer(env.clone(), is, *thn)?;
-            let (t_els, mut csts_els) = infer(env, is, *els)?;
+            let (t_tst, mut csts_tst) = infer(env, is, tst)?;
+            let (t_thn, mut csts_thn) = infer(env, is, thn)?;
+            let (t_els, mut csts_els) = infer(env, is, els)?;
             let cst_1 = Constraint(t_tst, type_bool());
             let cst_2 = Constraint(t_thn.clone(), t_els);
             csts_tst.append(&mut csts_thn);
@@ -220,15 +238,16 @@ fn infer(env: Env, is: &mut InferState, expr: Expr) -> Result<(Type, Vec<Constra
     }
 }
 
-pub fn infer_top(mut env: Env, mut bindings: Vec<(Name, Expr)>) -> Result<Env, TypeError> {
-    while let Some((name, expr)) = bindings.pop() {
-        let sc = infer_expr(env.clone(), expr)?;
-        env.extend(name, sc);
+pub fn infer_program(mut env: Env, prog: &Program) -> Result<(Scheme, Env), TypeError> {
+    for Defn(name, expr) in prog.p_defns.iter() {
+        let sc = infer_expr(&env, &expr)?;
+        env.extend(name.clone(), sc);
     }
-    Ok(env)
+    let sc = infer_expr(&env, &prog.p_body)?;
+    Ok((sc, env))
 }
 
-pub fn infer_expr(env: Env, expr: Expr) -> Result<Scheme, TypeError> {
+pub fn infer_expr(env: &Env, expr: &Expr) -> Result<Scheme, TypeError> {
     let mut is = InferState::new();
     let (ty, csts) = infer(env, &mut is, expr)?;
     let subst = run_solve(csts)?;
@@ -237,8 +256,8 @@ pub fn infer_expr(env: Env, expr: Expr) -> Result<Scheme, TypeError> {
 
 /// Return extra internal information, as compared to `infer_expr`.
 pub fn constraints_expr(
-    env: Env,
-    expr: Expr,
+    env: &Env,
+    expr: &Expr,
 ) -> Result<(Vec<Constraint>, Subst, Type, Scheme), TypeError> {
     let mut is = InferState::new();
     let (ty, csts) = infer(env, &mut is, expr)?;
@@ -280,6 +299,15 @@ fn norm_type(hm: &HashMap<TV, TV>, ty: Type) -> Type {
             Some(x) => Type::TVar(x.clone()),
             None => panic!("norm_type: impossible: type var not in signature"),
         },
+        Type::TList(a) => {
+            let a_ = norm_type(hm, *a);
+            Type::TList(Box::new(a_))
+        }
+        Type::TPair(a, b) => {
+            let a_ = norm_type(hm, *a);
+            let b_ = norm_type(hm, *b);
+            Type::TPair(Box::new(a_), Box::new(b_))
+        }
     }
 }
 
@@ -288,6 +316,8 @@ fn free_type_vars(ty: Type) -> Box<dyn Iterator<Item = TV>> {
         Type::TVar(a) => Box::new(iter::once(a)),
         Type::TArr(a, b) => Box::new(free_type_vars(*a).chain(free_type_vars(*b))),
         Type::TCon(_) => Box::new(iter::empty()),
+        Type::TList(a) => free_type_vars(*a),
+        Type::TPair(a, b) => Box::new(free_type_vars(*a).chain(free_type_vars(*b))),
     }
 }
 
@@ -313,6 +343,8 @@ fn unifies(t1: Type, t2: Type) -> Result<Subst, TypeError> {
         (Type::TVar(v), t) => bind(v, t),
         (t, Type::TVar(v)) => bind(v, t),
         (Type::TArr(t1, t2), Type::TArr(t3, t4)) => unify_many(vec![*t1, *t2], vec![*t3, *t4]),
+        (Type::TList(t1), Type::TList(t2)) => unifies(*t1, *t2),
+        (Type::TPair(t1, t2), Type::TPair(t3, t4)) => unify_many(vec![*t1, *t2], vec![*t3, *t4]),
         (a, b) => Err(TypeError::UnificationFail(a, b)),
     }
 }
@@ -393,19 +425,59 @@ fn generalize(env: Env, ty: Type) -> Scheme {
     Scheme(free_vars.collect(), ty_)
 }
 
-fn infer_lit(lit: Lit) -> Type {
+fn infer_lit(lit: &Lit) -> Type {
     match lit {
         Lit::LInt(_) => type_int(),
         Lit::LBool(_) => type_bool(),
     }
 }
 
-fn infer_primop(op: PrimOp) -> Type {
+fn infer_primop(is: &mut InferState, op: &PrimOp) -> Type {
     match op {
         PrimOp::Add => binop_arr(type_int(), type_int()),
         PrimOp::Mul => binop_arr(type_int(), type_int()),
         PrimOp::Sub => binop_arr(type_int(), type_int()),
         PrimOp::Eql => binop_arr(type_int(), type_bool()),
+        PrimOp::Null => {
+            let tv = is.fresh();
+            type_arr(type_list(tv), type_bool())
+        }
+        PrimOp::Map => {
+            let a = is.fresh();
+            let b = is.fresh();
+            let t_f = type_arr(a.clone(), b.clone());
+            let t_ls = type_list(a);
+            let t_ret = type_list(b);
+            type_arr_multi(vec![t_f, t_ls], t_ret)
+        }
+        PrimOp::Foldl => {
+            let a = is.fresh();
+            let b = is.fresh();
+            let t_f = type_arr_multi(vec![b.clone(), a.clone()], b.clone());
+            let t_ls = type_list(a.clone());
+            type_arr_multi(vec![t_f, b.clone(), t_ls], b)
+        }
+        PrimOp::Pair => {
+            let a = is.fresh();
+            let b = is.fresh();
+            type_arr_multi(vec![a.clone(), b.clone()], type_pair(a, b))
+        }
+        PrimOp::Fst => {
+            let a = is.fresh();
+            let b = is.fresh();
+            type_arr(type_pair(a.clone(), b), a)
+        }
+        PrimOp::Snd => {
+            let a = is.fresh();
+            let b = is.fresh();
+            type_arr(type_pair(a, b.clone()), b)
+        }
+        PrimOp::Cons => {
+            let a = is.fresh();
+            let ls = type_list(a.clone());
+            type_arr_multi(vec![a, ls.clone()], ls.clone())
+        }
+        PrimOp::Nil => type_list(is.fresh()),
     }
 }
 

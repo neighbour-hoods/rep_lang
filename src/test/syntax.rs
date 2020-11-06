@@ -52,7 +52,7 @@ impl Arbitrary for Expr {
                 let bds = single_shrinker(*bd.clone()).chain(bd.shrink().map(|v| *v));
                 Box::new(chain.chain(bds))
             }
-            _ => empty_shrinker(),
+            Expr::Var(_) | Expr::Lit(_) | Expr::Prim(_) => empty_shrinker(),
         }
     }
 }
@@ -127,11 +127,19 @@ impl Arbitrary for Name {
 
 impl Arbitrary for PrimOp {
     fn arbitrary<G: Gen>(g: &mut G) -> PrimOp {
-        match g.gen_range(0, 4) {
+        match g.gen_range(0, 12) {
             0 => PrimOp::Add,
             1 => PrimOp::Sub,
             2 => PrimOp::Mul,
             3 => PrimOp::Eql,
+            4 => PrimOp::Null,
+            5 => PrimOp::Map,
+            6 => PrimOp::Foldl,
+            7 => PrimOp::Pair,
+            8 => PrimOp::Fst,
+            9 => PrimOp::Snd,
+            10 => PrimOp::Cons,
+            11 => PrimOp::Nil,
             _ => panic!("impossible: Arbitrary: PrimOp: gen out of bounds"),
         }
     }

@@ -13,6 +13,20 @@ pub enum Expr {
     Prim(PrimOp),
 }
 
+#[macro_export]
+macro_rules! app {
+    ( $a: expr, $b: expr ) => {
+        Expr::App(Box::new($a), Box::new($b))
+    };
+}
+
+#[macro_export]
+macro_rules! lam {
+    ( $a: expr, $b: expr ) => {
+        Expr::Lam($a, Box::new($b))
+    };
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Lit {
     LInt(i64),
@@ -25,12 +39,21 @@ pub enum PrimOp {
     Sub,
     Mul,
     Eql,
+    Null,
+    Map,
+    Foldl,
+    Pair,
+    Fst,
+    Snd,
+    Cons,
+    Nil,
 }
 
+#[derive(Clone, Debug)]
 pub struct Defn(pub Name, pub Expr);
 
-#[allow(dead_code)]
+#[derive(Clone, Debug)]
 pub struct Program {
-    p_defns: Vec<Defn>,
-    p_body: Expr,
+    pub p_defns: Vec<Defn>,
+    pub p_body: Expr,
 }

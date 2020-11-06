@@ -6,6 +6,7 @@ extern crate quickcheck;
 extern crate quickcheck_macros;
 
 pub mod env;
+pub mod eval;
 pub mod infer;
 pub mod parse;
 pub mod pretty;

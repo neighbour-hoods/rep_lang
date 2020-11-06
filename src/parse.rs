@@ -1,7 +1,7 @@
 use combine::error::{ParseError, StreamError};
 use combine::parser::char::{alpha_num, char, digit, letter, spaces, string};
 use combine::stream::{Stream, StreamErrorFor};
-use combine::{attempt, between, choice, many1, not_followed_by, optional, parser, Parser};
+use combine::{attempt, between, choice, many, many1, not_followed_by, optional, parser, Parser};
 
 use super::syntax::*;
 
@@ -27,11 +27,21 @@ where
     });
     let lit = choice((l_bool, l_int)).map(|v| Expr::Lit(v));
 
-    let p_add = res_str("+").map(|_| PrimOp::Add);
-    let p_sub = res_str("-").map(|_| PrimOp::Sub);
-    let p_mul = res_str("*").map(|_| PrimOp::Mul);
-    let p_eql = res_str("==").map(|_| PrimOp::Eql);
-    let prim_op = choice((p_add, p_sub, p_mul, p_eql)).map(|v| Expr::Prim(v));
+    let prim_op = choice((
+        res_str("+").map(|_| PrimOp::Add),
+        res_str("-").map(|_| PrimOp::Sub),
+        res_str("*").map(|_| PrimOp::Mul),
+        res_str("==").map(|_| PrimOp::Eql),
+        attempt(res_str("null").map(|_| PrimOp::Null)),
+        res_str("map").map(|_| PrimOp::Map),
+        attempt(res_str("foldl").map(|_| PrimOp::Foldl)),
+        res_str("pair").map(|_| PrimOp::Pair),
+        res_str("fst").map(|_| PrimOp::Fst),
+        res_str("snd").map(|_| PrimOp::Snd),
+        res_str("cons").map(|_| PrimOp::Cons),
+        res_str("nil").map(|_| PrimOp::Nil),
+    ))
+    .map(|v| Expr::Prim(v));
 
     let app = (expr(), many1::<Vec<_>, _, _>(expr())).map(|t| {
         let applicator = |fun, arg: Expr| Expr::App(Box::new(fun), Box::new(arg));
@@ -65,12 +75,32 @@ where
             })
     };
 
+    // here we introduce a special syntactic form for lists, which we desugar
+    // into successive applications of `cons` to `nil`.
+    let list = (res_str("list"), many::<Vec<_>, _, _>(expr())).map(|t| {
+        let applicator = |ls, e| {
+            let cons = Expr::Prim(PrimOp::Cons);
+            let f = Expr::App(Box::new(cons.clone()), Box::new(e));
+            Expr::App(Box::new(f), Box::new(ls))
+        };
+        t.1.into_iter()
+            .rev()
+            .fold(Expr::Prim(PrimOp::Nil), applicator)
+    });
+
     let if_ = (res_str("if"), expr(), expr(), expr())
         .map(|t| Expr::If(Box::new(t.1), Box::new(t.2), Box::new(t.3)));
 
     let fix = (res_str("fix"), expr()).map(|t| Expr::Fix(Box::new(t.1)));
 
-    let parenthesized = choice((attempt(lam), attempt(let_), attempt(if_), attempt(fix), app));
+    let parenthesized = choice((
+        attempt(lam),
+        attempt(let_),
+        attempt(list),
+        attempt(if_),
+        attempt(fix),
+        app,
+    ));
 
     choice((
         attempt(lit),
@@ -112,6 +142,34 @@ parser! {
     where [Input: Stream<Token = char>]
     {
         defn_()
+    }
+}
+
+parser! {
+    pub fn defn_or_it_expr[Input]()(Input) -> Defn
+    where [Input: Stream<Token = char>]
+    {
+        choice(( attempt(defn()), expr().map(|e| Defn(Name("it".to_string()), e)) ))
+    }
+}
+
+pub fn program_<Input>() -> impl Parser<Input, Output = Program>
+where
+    Input: Stream<Token = char>,
+    // Necessary due to rust-lang/rust#24159
+    Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+{
+    (many(attempt(defn())), expr()).map(|t| Program {
+        p_defns: t.0,
+        p_body: t.1,
+    })
+}
+
+parser! {
+    pub fn program[Input]()(Input) -> Program
+    where [Input: Stream<Token = char>]
+    {
+        program_()
     }
 }
 
@@ -166,10 +224,13 @@ where
 }
 
 pub fn reserved() -> Vec<String> {
-    ["let", "lam", "fix", "true", "false", "if"]
-        .iter()
-        .map(|x| x.to_string())
-        .collect()
+    [
+        "let", "lam", "fix", "true", "false", "if", "null", "map", "foldl", "pair", "fst", "snd",
+        "cons", "defn", "list", "nil",
+    ]
+    .iter()
+    .map(|x| x.to_string())
+    .collect()
 }
 
 fn name<Input>() -> impl Parser<Input, Output = Name>
