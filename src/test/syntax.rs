@@ -151,3 +151,20 @@ fn gen_alpha_char<G: Gen>(g: &mut G) -> char {
     let idx = g.gen_range(0, RANGE);
     return ALPHA_CHARSET[idx as usize] as char;
 }
+
+// tests
+
+pub mod syntax_test {
+    use crate::{
+        infer::{infer_primop, InferState},
+        syntax::{primop_arity, PrimOp},
+        types::type_arity,
+    };
+
+    #[quickcheck]
+    fn primop_arity_eql(op: PrimOp) -> bool {
+        let mut is = InferState::new();
+        let ty = infer_primop(&mut is, &op);
+        primop_arity(&op) == type_arity(ty)
+    }
+}

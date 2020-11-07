@@ -8,10 +8,10 @@ pub struct Constraint(Type, Type);
 
 pub type Subst = HashMap<TV, Type>;
 
-struct InferState(u64);
+pub struct InferState(u64);
 
 impl InferState {
-    fn new() -> InferState {
+    pub fn new() -> InferState {
         InferState(0)
     }
 
@@ -432,7 +432,7 @@ fn infer_lit(lit: &Lit) -> Type {
     }
 }
 
-fn infer_primop(is: &mut InferState, op: &PrimOp) -> Type {
+pub fn infer_primop(is: &mut InferState, op: &PrimOp) -> Type {
     match op {
         PrimOp::Add => binop_arr(type_int(), type_int()),
         PrimOp::Mul => binop_arr(type_int(), type_int()),

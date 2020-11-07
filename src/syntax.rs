@@ -57,3 +57,22 @@ pub struct Program {
     pub p_defns: Vec<Defn>,
     pub p_body: Expr,
 }
+
+// helpers
+
+pub fn primop_arity(op: &PrimOp) -> usize {
+    match op {
+        PrimOp::Add => 2,
+        PrimOp::Sub => 2,
+        PrimOp::Mul => 2,
+        PrimOp::Eql => 2,
+        PrimOp::Null => 1,
+        PrimOp::Map => 2,
+        PrimOp::Foldl => 3,
+        PrimOp::Pair => 2,
+        PrimOp::Fst => 1,
+        PrimOp::Snd => 1,
+        PrimOp::Cons => 2,
+        PrimOp::Nil => 0,
+    }
+}

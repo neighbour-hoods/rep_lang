@@ -83,3 +83,14 @@ impl Type {
         }
     }
 }
+
+// helpers
+
+/// arrow types have arity of whatever their return type is, plus 1.
+/// all others have arity 0 since they are not functions.
+pub fn type_arity(ty: Type) -> usize {
+    match ty {
+        Type::TArr(_arg, ret) => 1 + type_arity(*ret),
+        _ => 0,
+    }
+}

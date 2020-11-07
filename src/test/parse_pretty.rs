@@ -200,6 +200,9 @@ pub mod roundtrip {
 
     use crate::{parse::*, syntax::*, util::pretty::*};
 
+    // this test does not need to be a quickcheck property - we could just
+    // iterate over all enum constructors of `PrimOp`, but I'm not sure how
+    // to best do that, and this works well enough.
     #[quickcheck]
     fn parse_pretty_roundtrip(e: Expr) -> bool {
         let s = to_pretty(e.ppr(), 80);

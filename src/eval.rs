@@ -1,8 +1,7 @@
 use pretty::RcDoc;
-use std::collections::HashMap;
-use std::iter;
+use std::{cmp::Ordering, collections::HashMap, iter};
 
-use super::syntax::{Defn, Expr, Lit, Name, PrimOp, Program};
+use super::syntax::{primop_arity, Defn, Expr, Lit, Name, PrimOp, Program};
 use super::util::pretty::parens;
 use crate::{app, lam, sp};
 
@@ -72,9 +71,9 @@ pub fn eval(expr: &Expr) -> Value {
 
 use Value::*;
 pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
-    match find_prim_app(&expr, false) {
+    match primop_apply_case(es, expr) {
         // in this case we directly interpret the PrimOp.
-        Some((op, args)) => {
+        PrimOpApplyCase::FullyApplied(op, args) => {
             let args_v: Vec<Value> = args
                 .iter()
                 .map(|arg| eval_(env, es, &arg.clone()))
@@ -160,8 +159,10 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
             }
         }
 
+        PrimOpApplyCase::PartiallyApplied(lam) => eval_(env, es, &lam),
+
         // we do not find a direct PrimOp application, so we interpret normally.
-        None => match expr {
+        PrimOpApplyCase::Other => match expr {
             Expr::Lit(Lit::LInt(x)) => VInt(*x),
             Expr::Lit(Lit::LBool(x)) => VBool(*x),
 
@@ -226,6 +227,12 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
     }
 }
 
+enum PrimOpApplyCase {
+    FullyApplied(PrimOp, Vec<Expr>),
+    PartiallyApplied(Expr),
+    Other,
+}
+
 /// look for a "direct application" of a PrimOp. this means that it is nested
 /// within some number of `App`s, with no intervening other constructors. we
 /// want to find this because we can directly interpret these, rather than
@@ -242,5 +249,43 @@ fn find_prim_app(expr: &Expr, in_app: bool) -> Option<(PrimOp, Vec<Expr>)> {
         }
         Expr::Prim(op) if in_app => Some((op.clone(), Vec::new())),
         _ => None,
+    }
+}
+
+fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
+    match find_prim_app(expr, false) {
+        None => PrimOpApplyCase::Other,
+        Some((op, args)) => {
+            let delta = primop_arity(&op) - args.len();
+            match delta.cmp(&0) {
+                Ordering::Less => panic!(
+                    "primop_apply_case: impossible: primop {:?} is over-applied",
+                    op
+                ),
+
+                // fully applied
+                Ordering::Equal => PrimOpApplyCase::FullyApplied(op, args),
+
+                // not fully applied
+                Ordering::Greater => {
+                    // generate fresh names for the args which have not been applied
+                    let names: Vec<Name> = iter::repeat_with(|| es.fresh()).take(delta).collect();
+                    // wrap said fresh names into `Expr`s
+                    let name_vars = names.clone().into_iter().map(|nm| Expr::Var(nm));
+                    // iterator which runs through the provided arguments, adding the fresh names
+                    // onto the end to fill out to a full application
+                    let all_args = args.into_iter().chain(name_vars);
+                    // fold over the arguments to construct a full application of `op`
+                    let app_f = |f, arg| Expr::App(Box::new(f), Box::new(arg));
+                    let app = all_args.fold(Expr::Prim(op), app_f);
+                    // fold over the generated freshnames to construct a lambda which will bind the
+                    // names used in the applicaton
+                    let lam_f = |bd, nm| Expr::Lam(nm, Box::new(bd));
+                    let lam = names.into_iter().rev().fold(app, lam_f);
+                    // return the constructed `Expr`
+                    PrimOpApplyCase::PartiallyApplied(lam)
+                }
+            }
+        }
     }
 }
