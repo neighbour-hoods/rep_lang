@@ -41,7 +41,7 @@ impl EvalState {
         EvalState(0)
     }
 
-    fn fresh(&mut self) -> Name {
+    pub fn fresh(&mut self) -> Name {
         let cnt = match self {
             EvalState(c) => {
                 *c += 1;
