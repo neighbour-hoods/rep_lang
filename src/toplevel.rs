@@ -30,6 +30,22 @@ pub struct ReputationCalculationResult {
     pub value: eval::Value,
 }
 
-pub fn reduce_calculation<R>(calculation: syntax::Expr, input_data: &dyn Iterator<Item = eval::Value>) -> ReputationCalculationResult {
+pub fn reduce_calculation(calculation: syntax::Expr, input_data: &dyn Iterator<Item = eval::Value>) -> ReputationCalculationResult {
+    // strategy:
+    //
+    // conjure up fresh names for the provided `Values` (from the Iterator) using
+    // `EvalState::fresh`, if there are any.
+    //
+    // match the arity of the program body with the # of `Value`s. if mismatch, throw error.
+    //
+    // if arity matches, and is a positive #, then wrap the body expr in a (potentially series of)
+    // applications which apply it to the successive fresh names.
+    //
+    // bind the freshnames to the values in the TermEnv.
+    //
+    // lift most of eval::eval_program in order to evaluate the Defns (and be sure to thread state
+    // appropriately).
+    //
+    // evaluate the program body with the set-up TermEnv and EvalState.
     todo!()
 }
