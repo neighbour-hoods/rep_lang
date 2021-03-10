@@ -1,8 +1,16 @@
-use super::{syntax, types, eval};
+use combine::parser::Parser;
+use combine::stream::easy;
+
+use super::{syntax, types, eval, parse::program};
 
 /// throws an error if the document doesn’t pass type checking
-fn parse_calculation(dsl_document: String) -> Result<String, syntax::Expr> {
-    todo!()
+fn parse_calculation(dsl_document: String) -> Result<syntax::Program, String> {
+    match program().parse(easy::Stream(&dsl_document[..])) {
+        // TODO this is janky - perhaps we can just return the error?
+        // https://docs.rs/combine/4.5.2/combine/trait.StreamOnce.html#associatedtype.Error
+        Err(err) => Err(format!("parse error: {}", err)),
+        Ok((prog, _extra_input)) => Ok(prog),
+    }
 }
 
 fn get_calculation_input_type(calculation: syntax::Expr) -> types::Type {
