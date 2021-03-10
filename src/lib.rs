@@ -11,6 +11,7 @@ pub mod infer;
 pub mod parse;
 pub mod pretty;
 pub mod syntax;
+pub mod toplevel;
 pub mod types;
 pub mod util;
 
