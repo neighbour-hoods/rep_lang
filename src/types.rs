@@ -94,3 +94,33 @@ pub fn type_arity(ty: Type) -> usize {
         _ => 0,
     }
 }
+
+/// return the arguments to an arrow type. if the type is not an arrow type,
+/// then the vector will be empty.
+pub fn type_arguments(ty: &Type) -> Vec<Type> {
+    let mut vec = Vec::new();
+    let mut ty_ref = Some(ty);
+
+    while ty_ref != None {
+        match ty_ref {
+            Some(Type::TArr(arg, ret)) => {
+                vec.push(*arg.clone());
+                ty_ref = Some(ret);
+            },
+            _ => {
+                ty_ref = None;
+            },
+        }
+    }
+    vec
+}
+
+/// return the "return type" of type. for an arrow type this is the result
+/// after all arguments have been applied. for all other types this is an
+/// identity function.
+pub fn type_return(ty: &Type) -> Type {
+    match ty {
+        Type::TArr(_arg, ret) => type_return(ret),
+        _ => ty.clone(),
+    }
+}

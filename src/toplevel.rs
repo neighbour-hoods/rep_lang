@@ -1,7 +1,8 @@
 use combine::parser::Parser;
 use combine::stream::easy;
 
-use super::{syntax, types, eval, parse::program};
+use super::{
+    syntax, types, eval, parse::program, env::Env, infer::infer_program};
 
 /// throws an error if the document doesn’t pass type checking
 fn parse_calculation(dsl_document: String) -> Result<syntax::Program, String> {
@@ -13,13 +14,14 @@ fn parse_calculation(dsl_document: String) -> Result<syntax::Program, String> {
     }
 }
 
-fn get_calculation_input_type(calculation: syntax::Expr) -> types::Type {
-    todo!()
-}
-
-fn get_calculation_return_type(calculation: syntax::Expr) -> types::Type {
-    // types::Type::TRelated(op, Type, Type) needs to be implemented to support calculated / derived units
-    todo!()
+/// return the "scheme" of the body of a program. this may have free type variables in it.
+/// the `Type` contained within can be fed to `type_arguments` & `type_return`.
+// types::Type::TRelated(op, Type, Type) needs to be implemented to support calculated / derived units
+fn get_calculation_type(program: syntax::Program) -> Result<types::Scheme, String> {
+    match infer_program(Env::new(), &program) {
+        Ok((sc, _env)) => Ok(sc),
+        Err(err) => Err(format!("type error: {:?}", err)),
+    }
 }
 
 struct ReputationCalculationResult {
