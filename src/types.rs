@@ -106,10 +106,10 @@ pub fn type_arguments(ty: &Type) -> Vec<Type> {
             Some(Type::TArr(arg, ret)) => {
                 vec.push(*arg.clone());
                 ty_ref = Some(ret);
-            },
+            }
             _ => {
                 ty_ref = None;
-            },
+            }
         }
     }
     vec

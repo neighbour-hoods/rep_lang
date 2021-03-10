@@ -1,8 +1,7 @@
 use combine::parser::Parser;
 use combine::stream::easy;
 
-use super::{
-    syntax, types, eval, parse::program, env::Env, infer::infer_program};
+use super::{env::Env, eval, infer::infer_program, parse::program, syntax, types};
 
 /// throws an error if the document doesn’t pass type checking
 pub fn parse_calculation(dsl_document: String) -> Result<syntax::Program, String> {
@@ -30,7 +29,10 @@ pub struct ReputationCalculationResult {
     pub value: eval::Value,
 }
 
-pub fn reduce_calculation(calculation: syntax::Expr, input_data: &dyn Iterator<Item = eval::Value>) -> ReputationCalculationResult {
+pub fn reduce_calculation(
+    calculation: syntax::Expr,
+    input_data: &dyn Iterator<Item = eval::Value>,
+) -> ReputationCalculationResult {
     // strategy:
     //
     // conjure up fresh names for the provided `Values` (from the Iterator) using
