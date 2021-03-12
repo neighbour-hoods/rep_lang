@@ -7,8 +7,11 @@ use super::{
     eval,
     infer::{infer_program, unify_many, TypeError},
     parse::program,
-    syntax, types, types_values,
+    syntax,
+    syntax::Expr,
+    types, types_values,
 };
+use crate::app;
 
 // META TODO:
 // uses of `Result<_, String>` are unprincipled. it's better to return a specific error type.
@@ -78,7 +81,7 @@ pub fn reduce_calculation(
 
     // if arity matches, then check that the types unify.
     let values_types: Vec<types::Type> = paired_name_vals
-        .into_iter()
+        .iter()
         .map(|(_nm, val)| types_values::infer_value(&val))
         .collect();
     let _subst = unify_many(values_types, body_type_arguments)
@@ -86,6 +89,15 @@ pub fn reduce_calculation(
 
     // wrap the body expr in a (potentially series of) applications which apply
     // it to the successive fresh names.
+    let new_prog_body = {
+        let mut new_body = prog.p_body.clone();
+        for (name, _val) in paired_name_vals.iter() {
+            new_body = app!(new_body, Expr::Var(name.clone()));
+        }
+        new_body
+    };
+
+    // extend the environment to bind the freshnames to the values
     todo!();
 
     // evaluate the program defns
@@ -99,7 +111,7 @@ pub fn reduce_calculation(
     todo!();
 
     // evaluate the program body with the set-up TermEnv and EvalState.
-    let body_val = eval::eval_(&eval_env, &mut es, &prog.p_body);
+    let body_val = eval::eval_(&eval_env, &mut es, &new_prog_body);
 
     // package up the result
     Ok(ReputationCalculationOutput {
