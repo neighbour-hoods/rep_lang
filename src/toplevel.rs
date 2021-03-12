@@ -54,7 +54,7 @@ pub fn reduce_calculation(
     input_data: &mut dyn Iterator<Item = eval::Value>,
 ) -> Result<ReputationCalculationOutput, ReputationCalculationError> {
     // infer type of program
-    let (prog_scheme, prog_env) = infer_program(Env::new(), &prog)
+    let (prog_scheme, _prog_env) = infer_program(Env::new(), &prog)
         .map_err(|x| ReputationCalculationError::ProgramTypeInferenceError(x))?;
 
     // conjure up fresh names for the provided `Values` (from the Iterator) using
@@ -64,7 +64,7 @@ pub fn reduce_calculation(
         input_data.map(|val| (es.fresh(), val)).collect();
 
     // match the arity of the program body with the # of `Value`s. if mismatch, throw error.
-    let types::Scheme(_tvars, ty) = prog_scheme;
+    let types::Scheme(_tvars, ty) = &prog_scheme;
     let body_type_arguments = types::type_arguments(&ty);
     let _ = {
         let body_arity = body_type_arguments.len();
@@ -97,9 +97,6 @@ pub fn reduce_calculation(
         new_body
     };
 
-    // extend the environment to bind the freshnames to the values
-    todo!();
-
     // evaluate the program defns
     let mut eval_env = HashMap::new();
     for syntax::Defn(nm, bd) in prog.p_defns.iter() {
@@ -108,7 +105,9 @@ pub fn reduce_calculation(
     }
 
     // bind the freshnames to the values in the TermEnv.
-    todo!();
+    for (name, val) in paired_name_vals.iter() {
+        eval_env.insert(name.clone(), val.clone());
+    }
 
     // evaluate the program body with the set-up TermEnv and EvalState.
     let body_val = eval::eval_(&eval_env, &mut es, &new_prog_body);
