@@ -349,7 +349,7 @@ fn unifies(t1: Type, t2: Type) -> Result<Subst, TypeError> {
     }
 }
 
-fn unify_many(mut ts_1: Vec<Type>, mut ts_2: Vec<Type>) -> Result<Subst, TypeError> {
+pub fn unify_many(mut ts_1: Vec<Type>, mut ts_2: Vec<Type>) -> Result<Subst, TypeError> {
     if ts_1.is_empty() != ts_2.is_empty() {
         Err(TypeError::UnificationMismatch(ts_1, ts_2))
     } else {

@@ -13,6 +13,7 @@ pub mod pretty;
 pub mod syntax;
 pub mod toplevel;
 pub mod types;
+pub mod types_values;
 pub mod util;
 
 pub mod test;
