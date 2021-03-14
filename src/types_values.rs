@@ -17,7 +17,26 @@ fn infer_value_internal(
     match value {
         Value::VInt(_) => Ok((types::type_int(), vec![])),
         Value::VBool(_) => Ok((types::type_bool(), vec![])),
-        Value::VClosure(_name, _expr, _env) => todo!(),
+        Value::VClosure(_name, _expr, _env) => {
+            // VClosure(Name, Box<Expr>, TermEnv),
+            // type TermEnv = HashMap<Name, Value>;
+            //
+            // fn infer(
+            //     env: &Env,
+            //     is: &mut InferState,
+            //     expr: &Expr,
+            // ) -> Result<(Type, Vec<Constraint>), TypeError> {
+            //
+            // pub struct Env(HashMap<Name, Scheme>);
+            //
+            // if we can map `infer_value` over the `TermEnv`, we can marshall that into the `env`
+            // we provide to `infer`.
+            //
+            // we may need to convert it to a Scheme kinda like so:
+            // let tvars: Vec<types::TV> = free_type_vars(new_ty).collect();
+            // Ok(types::Scheme(tvars, new_ty))
+            todo!("infer_value_internal: unimplimented for closures")
+        }
         Value::VList(ls) => {
             let t_list = is.fresh();
             let t_element = is.fresh();
