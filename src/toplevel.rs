@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use super::{
     env::Env,
     eval,
-    infer::{infer_program, unify_many, TypeError},
+    infer::{infer_program, infer_program_with_is, unify_many, Constraint, TypeError},
     parse::program,
     syntax,
     syntax::Expr,
@@ -47,6 +47,7 @@ pub enum ReputationCalculationError {
     ArityMismatch(usize, usize),
     ProgramTypeInferenceError(TypeError),
     ProgramValuesUnificationError(TypeError),
+    ValuesIterTypeError(TypeError),
 }
 
 pub fn reduce_calculation(
@@ -54,7 +55,7 @@ pub fn reduce_calculation(
     input_data: &mut dyn Iterator<Item = eval::Value>,
 ) -> Result<ReputationCalculationOutput, ReputationCalculationError> {
     // infer type of program
-    let (prog_scheme, _prog_env) = infer_program(Env::new(), &prog)
+    let (prog_scheme, _prog_env, ref mut is) = infer_program_with_is(Env::new(), &prog)
         .map_err(|x| ReputationCalculationError::ProgramTypeInferenceError(x))?;
 
     // conjure up fresh names for the provided `Values` (from the Iterator) using
@@ -80,10 +81,12 @@ pub fn reduce_calculation(
     }?;
 
     // if arity matches, then check that the types unify.
-    let values_types: Vec<types::Type> = paired_name_vals
+    let values_types_result: Result<Vec<types::Type>, TypeError> = paired_name_vals
         .iter()
-        .map(|(_nm, val)| types_values::infer_value(&val))
+        .map(|(_nm, val)| types_values::infer_value(is, &val))
         .collect();
+    let values_types =
+        values_types_result.map_err(|x| ReputationCalculationError::ValuesIterTypeError(x))?;
     let subst = unify_many(values_types, body_type_arguments)
         .map_err(|x| ReputationCalculationError::ProgramValuesUnificationError(x))?;
 

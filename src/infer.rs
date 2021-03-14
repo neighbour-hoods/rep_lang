@@ -20,7 +20,7 @@ impl InferState {
     // also we could do more intelligible names a la sdiehl's iterator through
     // alphabetical names -
     // "a", "b", ... "z", "aa", "ab", ... "az", "ba", ...
-    fn fresh(&mut self) -> Type {
+    pub fn fresh(&mut self) -> Type {
         Type::TVar(self.fresh_tv())
     }
 
@@ -37,7 +37,7 @@ impl InferState {
 }
 
 impl Type {
-    fn apply(self, subst: &Subst) -> Type {
+    pub fn apply(self, subst: &Subst) -> Type {
         match self {
             Type::TCon(a) => Type::TCon(a),
             Type::TVar(ref a) => match subst.get(&a) {
@@ -238,6 +238,18 @@ fn infer(
     }
 }
 
+pub fn infer_program_with_is(
+    mut env: Env,
+    prog: &Program,
+) -> Result<(Scheme, Env, InferState), TypeError> {
+    for Defn(name, expr) in prog.p_defns.iter() {
+        let sc = infer_expr(&env, &expr)?;
+        env.extend(name.clone(), sc);
+    }
+    let (sc, is) = infer_expr_with_is(&env, &prog.p_body)?;
+    Ok((sc, env, is))
+}
+
 pub fn infer_program(mut env: Env, prog: &Program) -> Result<(Scheme, Env), TypeError> {
     for Defn(name, expr) in prog.p_defns.iter() {
         let sc = infer_expr(&env, &expr)?;
@@ -245,6 +257,13 @@ pub fn infer_program(mut env: Env, prog: &Program) -> Result<(Scheme, Env), Type
     }
     let sc = infer_expr(&env, &prog.p_body)?;
     Ok((sc, env))
+}
+
+fn infer_expr_with_is(env: &Env, expr: &Expr) -> Result<(Scheme, InferState), TypeError> {
+    let mut is = InferState::new();
+    let (ty, csts) = infer(env, &mut is, expr)?;
+    let subst = run_solve(csts)?;
+    Ok((close_over(ty.apply(&subst)), is))
 }
 
 pub fn infer_expr(env: &Env, expr: &Expr) -> Result<Scheme, TypeError> {
@@ -322,7 +341,7 @@ fn free_type_vars(ty: Type) -> Box<dyn Iterator<Item = TV>> {
 }
 
 // TODO can we take a reference to avoid cloning?
-fn run_solve(csts: Vec<Constraint>) -> Result<Subst, TypeError> {
+pub fn run_solve(csts: Vec<Constraint>) -> Result<Subst, TypeError> {
     solver(HashMap::new(), csts)
 }
 
