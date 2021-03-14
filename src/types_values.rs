@@ -18,9 +18,18 @@ fn infer_value_internal(
         Value::VInt(_) => Ok((types::type_int(), vec![])),
         Value::VBool(_) => Ok((types::type_bool(), vec![])),
         Value::VClosure(_name, _expr, _env) => todo!(),
-        Value::VList(_ls) => {
-            let tv = is.fresh();
-            todo!();
+        Value::VList(ls) => {
+            let t_list = is.fresh();
+            let t_element = is.fresh();
+            let mut csts = Vec::new();
+            for element in ls {
+                let (elem_ty, mut elem_csts) = infer_value_internal(is, element)?;
+                csts.append(&mut elem_csts);
+                let cst = Constraint(elem_ty, t_element.clone());
+                csts.push(cst);
+            }
+            csts.push(Constraint(t_list.clone(), types::type_list(t_element)));
+            Ok((t_list, csts))
         }
         Value::VPair(p1, p2) => {
             let (t1, mut csts1) = infer_value_internal(is, p1)?;

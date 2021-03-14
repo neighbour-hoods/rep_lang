@@ -4,7 +4,7 @@ use std::iter;
 use super::{env::*, syntax::*, types::*};
 
 #[derive(Clone, Debug)]
-pub struct Constraint(Type, Type);
+pub struct Constraint(pub Type, pub Type);
 
 pub type Subst = HashMap<TV, Type>;
 
