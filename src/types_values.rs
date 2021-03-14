@@ -35,7 +35,9 @@ fn infer_value_internal(
             let (t1, mut csts1) = infer_value_internal(is, p1)?;
             let (t2, mut csts2) = infer_value_internal(is, p2)?;
             csts1.append(&mut csts2);
-            Ok((types::type_pair(t1, t2), csts1))
+            let tv = is.fresh();
+            csts1.push(Constraint(tv.clone(), types::type_pair(t1, t2)));
+            Ok((tv, csts1))
         }
     }
 }
