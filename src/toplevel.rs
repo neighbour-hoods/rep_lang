@@ -84,7 +84,7 @@ pub fn reduce_calculation(
         .iter()
         .map(|(_nm, val)| types_values::infer_value(&val))
         .collect();
-    let _subst = unify_many(values_types, body_type_arguments)
+    let subst = unify_many(values_types, body_type_arguments)
         .map_err(|x| ReputationCalculationError::ProgramValuesUnificationError(x))?;
 
     // wrap the body expr in a (potentially series of) applications which apply
@@ -115,7 +115,7 @@ pub fn reduce_calculation(
     // package up the result
     Ok(ReputationCalculationOutput {
         rcr_calculation: prog.p_body,
-        scheme: prog_scheme,
+        scheme: prog_scheme.apply(&subst),
         value: body_val,
     })
 }

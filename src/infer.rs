@@ -86,7 +86,7 @@ impl Type {
 }
 
 impl Scheme {
-    fn apply(self, subst: &Subst) -> Scheme {
+    pub fn apply(self, subst: &Subst) -> Scheme {
         match self {
             Scheme(xs, ty) => {
                 let subst2 = {
