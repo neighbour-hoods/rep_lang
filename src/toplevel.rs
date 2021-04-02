@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use super::{
     env::Env,
     eval,
-    infer::{infer_program, infer_program_with_is, unify_many, Constraint, TypeError},
+    infer::{infer_program, infer_program_with_is, unify_many, TypeError},
     parse::program,
     syntax,
     syntax::{Expr, Name},
