@@ -8,8 +8,9 @@ use super::{
     infer::{infer_program, infer_program_with_is, unify_many, Constraint, TypeError},
     parse::program,
     syntax,
-    syntax::Expr,
+    syntax::{Expr, Name},
     types, types_values,
+    types_values::ValueInferenceError,
 };
 use crate::app;
 
@@ -48,6 +49,7 @@ pub enum ReputationCalculationError {
     ProgramTypeInferenceError(TypeError),
     ProgramValuesUnificationError(TypeError),
     ValuesIterTypeError(TypeError),
+    ValuesIterPassedClosure(Name, Box<Expr>),
 }
 
 pub fn reduce_calculation(
@@ -81,12 +83,16 @@ pub fn reduce_calculation(
     }?;
 
     // if arity matches, then check that the types unify.
-    let values_types_result: Result<Vec<types::Type>, TypeError> = paired_name_vals
+    let values_types_result: Result<Vec<types::Type>, ValueInferenceError> = paired_name_vals
         .iter()
         .map(|(_nm, val)| types_values::infer_value(is, &val))
         .collect();
-    let values_types =
-        values_types_result.map_err(|x| ReputationCalculationError::ValuesIterTypeError(x))?;
+    let values_types = values_types_result.map_err(|x| match x {
+        ValueInferenceError::TyErr(te) => ReputationCalculationError::ValuesIterTypeError(te),
+        ValueInferenceError::ClosureError(nm, bd) => {
+            ReputationCalculationError::ValuesIterPassedClosure(nm, bd)
+        }
+    })?;
     let subst = unify_many(values_types, body_type_arguments)
         .map_err(|x| ReputationCalculationError::ProgramValuesUnificationError(x))?;
 
