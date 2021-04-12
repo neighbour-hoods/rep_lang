@@ -11,3 +11,4 @@ pub mod syntax;
 pub mod util;
 
 pub mod test;
+pub mod test_helpers;

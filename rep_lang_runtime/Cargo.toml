@@ -16,7 +16,6 @@ rep_lang_parser = { path = "../rep_lang_parser" }
 [dev-dependencies]
 quickcheck = "0.9.2"
 quickcheck_macros = "0.9.1"
-rand = "0.7"
 
 [[bin]]
 name = "polyi"
