@@ -2,17 +2,20 @@ use combine::parser::Parser;
 use combine::stream::easy;
 use std::collections::HashMap;
 
+use rep_lang_parser::{
+    app,
+    parse::program,
+    syntax,
+    syntax::{Expr, Name},
+};
+
 use super::{
     env::Env,
     eval,
     infer::{infer_program, infer_program_with_is, unify_many, TypeError},
-    parse::program,
-    syntax,
-    syntax::{Expr, Name},
     types, types_values,
     types_values::ValueInferenceError,
 };
-use crate::app;
 
 // META TODO:
 // uses of `Result<_, String>` are unprincipled. it's better to return a specific error type.

@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::iter;
 
-use super::{env::*, syntax::*, types::*};
+use rep_lang_parser::syntax::*;
+
+use super::{env::*, types::*};
 
 #[derive(Clone, Debug)]
 pub struct Constraint(pub Type, pub Type);

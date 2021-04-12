@@ -1,7 +1,6 @@
 use pretty::RcDoc;
 
-use crate::sp;
-use crate::util::pretty::parens;
+use rep_lang_parser::{sp, util::pretty::parens};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash)]
 pub struct TV(pub String);

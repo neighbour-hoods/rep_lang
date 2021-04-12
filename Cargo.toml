@@ -1,5 +1,7 @@
 [workspace]
 
 members = [
+    "rep_lang_core",
+    "rep_lang_parser",
     "rep_lang_runtime",
 ]

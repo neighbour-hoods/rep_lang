@@ -1,7 +1,8 @@
 use core::iter::FromIterator;
 use std::{collections::HashMap, ops::Deref};
 
-use super::syntax::*;
+use rep_lang_parser::syntax::*;
+
 use super::types::*;
 
 #[derive(Clone, Debug)]

@@ -4,9 +4,9 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 
-use poly::{
-    env::Env, eval::eval_program, infer::infer_program, parse::program, util::pretty::to_pretty,
-};
+use rep_lang_parser::{parse::program, util::pretty::to_pretty};
+
+use poly::{env::Env, eval::eval_program, infer::infer_program};
 
 fn main() -> std::io::Result<()> {
     let width = 80;
