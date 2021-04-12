@@ -1,0 +1,3 @@
+= rep_lang_parser
+
+the parser for the reputation language, featuring LISP syntax for ease of parsing.

@@ -1,0 +1,7 @@
+= rep_lang_runtime
+
+the interpreter for the reputation language.
+
+== origin story
+
+a polymorphic language using Hindley-Milner type inference, based on on sdiehl's https://github.com/sdiehl/write-you-a-haskell/tree/master/chapter7/poly_constraints[poly_constraints] language and his http://dev.stephendiehl.com/fun/006_hindley_milner.html[tutorial].
