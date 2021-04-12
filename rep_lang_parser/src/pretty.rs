@@ -1,7 +1,8 @@
 use pretty::RcDoc;
 use std::iter;
 
-use super::syntax::{Defn, Expr, Expr::*, Lit, Lit::*, Name, PrimOp, PrimOp::*, Program};
+use rep_lang_core::syntax::{Defn, Expr, Expr::*, Lit, Lit::*, Name, PrimOp, PrimOp::*, Program};
+
 use crate::sp;
 use crate::util::pretty::parens;
 

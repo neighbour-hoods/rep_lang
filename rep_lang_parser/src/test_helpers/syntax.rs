@@ -2,8 +2,9 @@ use quickcheck::{empty_shrinker, single_shrinker, Arbitrary, Gen};
 use rand::Rng;
 use std::iter;
 
+use rep_lang_core::syntax::*;
+
 use crate::parse::reserved;
-use crate::syntax::*;
 
 impl Arbitrary for Expr {
     fn arbitrary<G: Gen>(g: &mut G) -> Expr {

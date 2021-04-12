@@ -1,6 +1,6 @@
 use quickcheck::quickcheck;
 
-use rep_lang_parser::{
+use rep_lang_core::{
     syntax::{primop_arity, PrimOp},
 };
 

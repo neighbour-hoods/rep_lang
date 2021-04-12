@@ -7,7 +7,6 @@ extern crate quickcheck_macros;
 
 pub mod parse;
 pub mod pretty;
-pub mod syntax;
 pub mod util;
 
 pub mod test;
