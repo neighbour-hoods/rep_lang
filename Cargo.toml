@@ -1,26 +1,5 @@
-[package]
-name = "poly"
-version = "0.1.0"
-authors = ["Michael Hueschen <m@mhueschen.space>"]
-edition = "2018"
-license = "MIT"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-combine = "4.3.2"
-pretty = "0.10.0"
-rustyline = "6.3.0"
-
-[dev-dependencies]
-quickcheck = "0.9.2"
-quickcheck_macros = "0.9.1"
-rand = "0.7"
-
-[[bin]]
-name = "polyi"
-path = "src/bin/polyi.rs"
-
-[[bin]]
-name = "poly"
-path = "src/bin/poly.rs"
+members = [
+    "rep_lang_runtime",
+]
