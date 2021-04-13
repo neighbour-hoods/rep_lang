@@ -61,7 +61,7 @@ pub fn reduce_calculation(
 ) -> Result<ReputationCalculationOutput, ReputationCalculationError> {
     // infer type of program
     let (prog_scheme, _prog_env, ref mut is) = infer_program_with_is(Env::new(), &prog)
-        .map_err(|x| ReputationCalculationError::ProgramTypeInferenceError(x))?;
+        .map_err(ReputationCalculationError::ProgramTypeInferenceError)?;
 
     // conjure up fresh names for the provided `Values` (from the Iterator) using
     // `EvalState::fresh`, if there are any.
@@ -97,7 +97,7 @@ pub fn reduce_calculation(
         }
     })?;
     let subst = unify_many(values_types, body_type_arguments)
-        .map_err(|x| ReputationCalculationError::ProgramValuesUnificationError(x))?;
+        .map_err(ReputationCalculationError::ProgramValuesUnificationError)?;
 
     // wrap the body expr in a (potentially series of) applications which apply
     // it to the successive fresh names.

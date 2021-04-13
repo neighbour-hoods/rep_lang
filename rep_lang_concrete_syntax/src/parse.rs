@@ -25,7 +25,7 @@ where
             None => Lit::LInt(num),
         }
     });
-    let lit = choice((l_bool, l_int)).map(|v| Expr::Lit(v));
+    let lit = choice((l_bool, l_int)).map(Expr::Lit);
 
     let prim_op = choice((
         res_str("+").map(|_| PrimOp::Add),
@@ -41,7 +41,7 @@ where
         res_str("cons").map(|_| PrimOp::Cons),
         res_str("nil").map(|_| PrimOp::Nil),
     ))
-    .map(|v| Expr::Prim(v));
+    .map(Expr::Prim);
 
     let app = (expr(), many1::<Vec<_>, _, _>(expr())).map(|t| {
         let applicator = |fun, arg: Expr| Expr::App(Box::new(fun), Box::new(arg));
@@ -80,7 +80,7 @@ where
     let list = (res_str("list"), many::<Vec<_>, _, _>(expr())).map(|t| {
         let applicator = |ls, e| {
             let cons = Expr::Prim(PrimOp::Cons);
-            let f = Expr::App(Box::new(cons.clone()), Box::new(e));
+            let f = Expr::App(Box::new(cons), Box::new(e));
             Expr::App(Box::new(f), Box::new(ls))
         };
         t.1.into_iter()

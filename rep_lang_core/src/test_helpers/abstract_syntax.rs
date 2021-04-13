@@ -7,7 +7,7 @@ use crate::abstract_syntax::*;
 // this code is unused within this crate because it's library code. we know
 // that, so we disable the warnings.
 #[allow(dead_code)]
-pub fn arbitrary_expr<G: Gen>(g: &mut G, reserved: &Vec<String>) -> Expr {
+pub fn arbitrary_expr<G: Gen>(g: &mut G, reserved: &[String]) -> Expr {
     gen_expr(g, g.size(), reserved)
 }
 
@@ -54,7 +54,7 @@ impl Arbitrary for Expr {
                 Box::new(pairs.chain(tsts).chain(thns).chain(elss))
             }
             Expr::Fix(bd) => {
-                let chain = bd.shrink().map(|bd_| Expr::Fix(bd_));
+                let chain = bd.shrink().map(Expr::Fix);
                 let bds = single_shrinker(*bd.clone()).chain(bd.shrink().map(|v| *v));
                 Box::new(chain.chain(bds))
             }
@@ -73,7 +73,7 @@ impl Arbitrary for Expr {
 // by passing an explicit size parameter, we can implement this directly - dividing the size
 // parameter as we recur, and terminating when it hits a bound.
 #[allow(dead_code)]
-pub fn gen_expr<G: Gen>(g: &mut G, size: usize, reserved: &Vec<String>) -> Expr {
+pub fn gen_expr<G: Gen>(g: &mut G, size: usize, reserved: &[String]) -> Expr {
     let upper_bound = if size < 1 { 3 } else { 8 };
     match g.gen_range(0, upper_bound) {
         0 => Expr::Var(arbitrary_name(g, reserved)),
@@ -119,7 +119,7 @@ pub fn arbitrary_lit<G: Gen>(g: &mut G) -> Lit {
 }
 
 #[allow(dead_code)]
-pub fn arbitrary_name<G: Gen>(g: &mut G, reserved: &Vec<String>) -> Name {
+pub fn arbitrary_name<G: Gen>(g: &mut G, reserved: &[String]) -> Name {
     let len = g.gen_range(3, 8);
     loop {
         let s = iter::repeat(gen_alpha_char(g)).take(len).collect();
@@ -159,5 +159,5 @@ fn gen_alpha_char<G: Gen>(g: &mut G) -> char {
     const ALPHA_CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
     const RANGE: usize = ALPHA_CHARSET.len();
     let idx = g.gen_range(0, RANGE);
-    return ALPHA_CHARSET[idx as usize] as char;
+    ALPHA_CHARSET[idx as usize] as char
 }
