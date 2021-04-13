@@ -2,12 +2,11 @@ use combine::parser::Parser;
 use combine::stream::easy;
 use std::collections::HashMap;
 
-use rep_lang_parser::{
-    app,
-    parse::program,
-    syntax,
+use rep_lang_core::{
+    app, syntax,
     syntax::{Expr, Name},
 };
+use rep_lang_parser::parse::program;
 
 use super::{
     env::Env,

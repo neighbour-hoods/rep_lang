@@ -1,11 +1,11 @@
 use pretty::RcDoc;
 use std::{cmp::Ordering, collections::HashMap, iter};
 
-use rep_lang_parser::{
-    app, lam, sp,
+use rep_lang_core::{
+    app, lam,
     syntax::{primop_arity, Defn, Expr, Lit, Name, PrimOp, Program},
-    util::pretty::parens,
 };
+use rep_lang_parser::{sp, util::pretty::parens};
 
 #[derive(Clone)]
 pub enum Value {

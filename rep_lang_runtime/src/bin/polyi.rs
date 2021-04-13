@@ -3,7 +3,8 @@ use combine::stream::easy;
 use rustyline::{error::ReadlineError, Editor};
 use std::collections::HashMap;
 
-use rep_lang_parser::{parse::defn_or_it_expr, syntax::Defn, util::pretty::to_pretty};
+use rep_lang_core::syntax::Defn;
+use rep_lang_parser::{parse::defn_or_it_expr, util::pretty::to_pretty};
 
 use poly::{
     env::*,

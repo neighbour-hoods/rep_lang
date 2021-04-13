@@ -9,5 +9,6 @@ pub mod parse;
 pub mod pretty;
 pub mod util;
 
-pub mod test;
 pub mod test_helpers;
+
+pub mod test;

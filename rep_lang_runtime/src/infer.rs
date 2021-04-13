@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter;
 
-use rep_lang_parser::syntax::*;
+use rep_lang_core::syntax::*;
 
 use super::{env::*, types::*};
 

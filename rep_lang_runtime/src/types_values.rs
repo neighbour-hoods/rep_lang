@@ -1,4 +1,4 @@
-use rep_lang_parser::syntax::{Expr, Name};
+use rep_lang_core::syntax::{Expr, Name};
 
 use super::{
     eval::Value,
