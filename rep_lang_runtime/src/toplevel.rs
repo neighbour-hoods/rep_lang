@@ -6,7 +6,7 @@ use rep_lang_core::{
     app, syntax,
     syntax::{Expr, Name},
 };
-use rep_lang_parser::parse::program;
+use rep_lang_concrete_syntax::parse::program;
 
 use super::{
     env::Env,

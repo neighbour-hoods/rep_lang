@@ -3,7 +3,7 @@
 this repository consists of 3 crates at present:
 
 * rep_lang_core
-* rep_lang_parser
+* rep_lang_concrete_syntax
 * rep_lang_runtime
 
 == building & running
@@ -19,7 +19,7 @@ $ cargo run --bin polyi
 < ctrl-d to exit >
 
 # interpret code from a file
-$ cargo run --bin poly ./rep_lang_parser/examples/ex1.poly
+$ cargo run --bin poly ./rep_lang_concrete_syntax/examples/ex1.poly
 < output >
 ----
 

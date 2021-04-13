@@ -5,7 +5,7 @@ use rep_lang_core::{
     app, lam,
     syntax::{primop_arity, Defn, Expr, Lit, Name, PrimOp, Program},
 };
-use rep_lang_parser::{sp, util::pretty::parens};
+use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 
 #[derive(Clone)]
 pub enum Value {
