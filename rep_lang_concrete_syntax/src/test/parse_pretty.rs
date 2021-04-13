@@ -199,7 +199,9 @@ pub mod roundtrip {
     use combine::parser::Parser;
     use combine::stream::easy;
 
-    use crate::{parse::*, pretty::ppr_expr, test_helpers::abstract_syntax::WrappedExpr, util::pretty::*};
+    use crate::{
+        parse::*, pretty::ppr_expr, test_helpers::abstract_syntax::WrappedExpr, util::pretty::*,
+    };
 
     #[quickcheck]
     fn parse_pretty_roundtrip(w_e: WrappedExpr) -> bool {
