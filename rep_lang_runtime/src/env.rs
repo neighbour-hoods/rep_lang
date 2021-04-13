@@ -61,12 +61,18 @@ impl Env {
     pub fn keys<T>(&self) -> Vec<Name> {
         let Env(hm) = self;
         // TODO is this avoidable waste?
-        hm.keys().map(|x| x.clone()).collect()
+        hm.keys().cloned().collect()
     }
 
     pub fn replace(&mut self, nm: &Name, sc: Scheme) {
         self.remove(nm.clone());
         self.extend(nm.clone(), sc);
+    }
+}
+
+impl Default for Env {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

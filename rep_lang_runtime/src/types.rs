@@ -3,11 +3,11 @@ use pretty::RcDoc;
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash)]
-pub struct TV(pub String);
+pub struct Tv(pub String);
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Type {
-    TVar(TV),
+    TVar(Tv),
     TCon(String),
     TArr(Box<Type>, Box<Type>),
     TList(Box<Type>),
@@ -15,7 +15,7 @@ pub enum Type {
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct Scheme(pub Vec<TV>, pub Type);
+pub struct Scheme(pub Vec<Tv>, pub Type);
 
 // type constructors
 
@@ -63,10 +63,10 @@ impl Scheme {
     }
 }
 
-impl TV {
+impl Tv {
     pub fn ppr(&self) -> RcDoc<()> {
         match self {
-            TV(s) => RcDoc::text(s),
+            Tv(s) => RcDoc::text(s),
         }
     }
 }

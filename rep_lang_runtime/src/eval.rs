@@ -55,6 +55,12 @@ impl EvalState {
     }
 }
 
+impl Default for EvalState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub fn eval_program(prog: &Program) -> (Value, TermEnv) {
     let mut env = HashMap::new();
     let mut es = EvalState::new();
@@ -123,7 +129,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                             new_env.insert(nm.clone(), acc);
                             match eval_(&new_env, es, &bd) {
                                 VClosure(nm2, bd2, clo2) => {
-                                    let mut new_env2 = clo2.clone();
+                                    let mut new_env2 = clo2;
                                     new_env2.insert(nm2, arg_v.clone());
                                     eval_(&new_env2, es, &bd2)
                                 }
@@ -131,7 +137,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                             }
                         };
                         // TODO: why is this clone necessary?
-                        vec.into_iter().fold(init.clone(), applicator)
+                        vec.iter().fold(init.clone(), applicator)
                     }
                     _ => panic!("foldl: bad types"),
                 },
@@ -149,12 +155,9 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                     _ => panic!("snd: bad types"),
                 },
                 PrimOp::Cons => match &args_v[1] {
-                    VList(vec) => VList(
-                        iter::once(&args_v[0])
-                            .chain(vec.into_iter())
-                            .map(|x| x.clone())
-                            .collect(),
-                    ),
+                    VList(vec) => {
+                        VList(iter::once(&args_v[0]).chain(vec.iter()).cloned().collect())
+                    }
                     _ => panic!("cons: bad types"),
                 },
                 PrimOp::Nil => panic!("nil: application of non-function"),
@@ -213,7 +216,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
             Expr::App(fun, arg) => match eval_(env, es, fun) {
                 VClosure(nm, bd, clo) => {
                     let arg_v = eval_(env, es, arg);
-                    let mut new_env = clo.clone();
+                    let mut new_env = clo;
                     new_env.insert(nm, arg_v);
                     eval_(&new_env, es, &bd)
                 }
@@ -273,7 +276,7 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
                     // generate fresh names for the args which have not been applied
                     let names: Vec<Name> = iter::repeat_with(|| es.fresh()).take(delta).collect();
                     // wrap said fresh names into `Expr`s
-                    let name_vars = names.clone().into_iter().map(|nm| Expr::Var(nm));
+                    let name_vars = names.clone().into_iter().map(Expr::Var);
                     // iterator which runs through the provided arguments, adding the fresh names
                     // onto the end to fill out to a full application
                     let all_args = args.into_iter().chain(name_vars);

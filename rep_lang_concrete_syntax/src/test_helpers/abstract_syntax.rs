@@ -17,6 +17,6 @@ impl Arbitrary for WrappedExpr {
 
     fn shrink(&self) -> Box<dyn Iterator<Item = WrappedExpr>> {
         let WrappedExpr(expr) = &*self;
-        Box::new(expr.shrink().map(|e| WrappedExpr(e)))
+        Box::new(expr.shrink().map(WrappedExpr))
     }
 }

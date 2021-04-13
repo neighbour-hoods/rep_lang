@@ -8,7 +8,7 @@ use super::{env::*, types::*};
 #[derive(Clone, Debug)]
 pub struct Constraint(pub Type, pub Type);
 
-pub type Subst = HashMap<TV, Type>;
+pub type Subst = HashMap<Tv, Type>;
 
 pub struct InferState(u64);
 
@@ -26,7 +26,7 @@ impl InferState {
         Type::TVar(self.fresh_tv())
     }
 
-    fn fresh_tv(&mut self) -> TV {
+    fn fresh_tv(&mut self) -> Tv {
         let cnt = match self {
             InferState(c) => {
                 *c += 1;
@@ -34,7 +34,13 @@ impl InferState {
             }
         };
         let s = format!("t{}", cnt);
-        TV(s)
+        Tv(s)
+    }
+}
+
+impl Default for InferState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -63,7 +69,7 @@ impl Type {
         }
     }
 
-    fn ftv(self) -> HashSet<TV> {
+    fn ftv(self) -> HashSet<Tv> {
         match self {
             Type::TCon(_) => HashSet::new(),
             Type::TVar(a) => {
@@ -76,12 +82,12 @@ impl Type {
                 // TODO figure out if this is performing unnecessary copying
                 // I think we could just iterate through hs2 and insert values
                 // into `t1.ftv()`
-                t1.ftv().union(&hs2).map(|x| x.clone()).collect()
+                t1.ftv().union(&hs2).cloned().collect()
             }
             Type::TList(ty) => ty.ftv(),
             Type::TPair(t1, t2) => {
                 let hs2 = t2.ftv();
-                t1.ftv().union(&hs2).map(|x| x.clone()).collect()
+                t1.ftv().union(&hs2).cloned().collect()
             }
         }
     }
@@ -102,7 +108,7 @@ impl Scheme {
             }
         }
     }
-    fn ftv(self) -> HashSet<TV> {
+    fn ftv(self) -> HashSet<Tv> {
         match self {
             Scheme(xs, ty) => {
                 let mut hs = ty.ftv();
@@ -126,12 +132,12 @@ impl Constraint {
         }
     }
     #[allow(dead_code)]
-    fn ftv(self) -> HashSet<TV> {
+    fn ftv(self) -> HashSet<Tv> {
         match self {
             Constraint(t1, t2) => {
                 let hs2 = t2.ftv();
                 // TODO see note on Type::ftv about excess copying
-                t1.ftv().union(&hs2).map(|x| x.clone()).collect()
+                t1.ftv().union(&hs2).cloned().collect()
             }
         }
     }
@@ -148,11 +154,11 @@ impl Env {
             .map(|(nm, sc)| (nm.clone(), sc.clone().apply(subst)))
             .collect()
     }
-    fn ftv(self) -> HashSet<TV> {
+    fn ftv(self) -> HashSet<Tv> {
         let mut hs = HashSet::new();
         for sc in self.values() {
             let sc_ftvs = sc.clone().ftv();
-            hs = hs.union(&sc_ftvs).map(|x| x.clone()).collect();
+            hs = hs.union(&sc_ftvs).cloned().collect();
         }
         hs
     }
@@ -161,7 +167,7 @@ impl Env {
 #[derive(Debug)]
 pub enum TypeError {
     UnificationFail(Type, Type),
-    InfiniteType(TV, Type),
+    InfiniteType(Tv, Type),
     UnboundVariable(Name),
     Ambigious(Vec<Constraint>),
     UnificationMismatch(Vec<Type>, Vec<Type>),
@@ -294,7 +300,7 @@ fn close_over(ty: Type) -> Scheme {
 fn normalize(sc: Scheme) -> Scheme {
     let Scheme(_, body) = sc;
     let hm = {
-        let mut vars: Vec<TV> = free_type_vars(body.clone()).collect();
+        let mut vars: Vec<Tv> = free_type_vars(body.clone()).collect();
         vars.dedup();
         let mut hm = HashMap::new();
         let mut is = InferState::new();
@@ -303,12 +309,12 @@ fn normalize(sc: Scheme) -> Scheme {
         }
         hm
     };
-    let foralls = hm.values().map(|x| x.clone()).collect();
+    let foralls = hm.values().cloned().collect();
     let ty = norm_type(&hm, body);
     Scheme(foralls, ty)
 }
 
-fn norm_type(hm: &HashMap<TV, TV>, ty: Type) -> Type {
+fn norm_type(hm: &HashMap<Tv, Tv>, ty: Type) -> Type {
     match ty {
         Type::TArr(a, b) => {
             let a_ = norm_type(hm, *a);
@@ -332,7 +338,7 @@ fn norm_type(hm: &HashMap<TV, TV>, ty: Type) -> Type {
     }
 }
 
-fn free_type_vars(ty: Type) -> Box<dyn Iterator<Item = TV>> {
+fn free_type_vars(ty: Type) -> Box<dyn Iterator<Item = Tv>> {
     match ty {
         Type::TVar(a) => Box::new(iter::once(a)),
         Type::TArr(a, b) => Box::new(free_type_vars(*a).chain(free_type_vars(*b))),
@@ -392,8 +398,8 @@ pub fn unify_many(mut ts_1: Vec<Type>, mut ts_2: Vec<Type>) -> Result<Subst, Typ
     }
 }
 
-fn bind(a: TV, t: Type) -> Result<Subst, TypeError> {
-    if t.clone() == Type::TVar(a.clone()) {
+fn bind(a: Tv, t: Type) -> Result<Subst, TypeError> {
+    if t == Type::TVar(a.clone()) {
         Ok(HashMap::new())
     } else if occurs_check(&a, t.clone()) {
         Err(TypeError::InfiniteType(a, t))
@@ -404,7 +410,7 @@ fn bind(a: TV, t: Type) -> Result<Subst, TypeError> {
     }
 }
 
-fn occurs_check(a: &TV, t: Type) -> bool {
+fn occurs_check(a: &Tv, t: Type) -> bool {
     t.ftv().contains(&a)
 }
 
@@ -421,11 +427,11 @@ fn compose(mut s1: Subst, mut s2: Subst) -> Subst {
 fn lookup_env(env: &Env, is: &mut InferState, nm: &Name) -> Result<Type, TypeError> {
     match env.get(nm) {
         None => Err(TypeError::UnboundVariable(nm.clone())),
-        Some(sc) => instantiate(is, sc),
+        Some(sc) => Ok(instantiate(is, sc)),
     }
 }
 
-fn instantiate(is: &mut InferState, sc: &Scheme) -> Result<Type, TypeError> {
+fn instantiate(is: &mut InferState, sc: &Scheme) -> Type {
     match sc {
         Scheme(xs, ty) => {
             let subst: Subst = xs
@@ -433,7 +439,7 @@ fn instantiate(is: &mut InferState, sc: &Scheme) -> Result<Type, TypeError> {
                 .into_iter()
                 .zip(iter::repeat_with(|| is.fresh()))
                 .collect();
-            Ok(ty.clone().apply(&subst))
+            ty.clone().apply(&subst)
         }
     }
 }
@@ -442,7 +448,7 @@ fn generalize(env: Env, ty: Type) -> Scheme {
     let ty_ = ty.clone();
     let ty_ftv = ty.ftv();
     let env_ftv = env.ftv();
-    let free_vars = ty_ftv.difference(&env_ftv).map(|x| x.clone());
+    let free_vars = ty_ftv.difference(&env_ftv).cloned();
     Scheme(free_vars.collect(), ty_)
 }
 
@@ -475,7 +481,7 @@ pub fn infer_primop(is: &mut InferState, op: &PrimOp) -> Type {
             let a = is.fresh();
             let b = is.fresh();
             let t_f = type_arr_multi(vec![b.clone(), a.clone()], b.clone());
-            let t_ls = type_list(a.clone());
+            let t_ls = type_list(a);
             type_arr_multi(vec![t_f, b.clone(), t_ls], b)
         }
         PrimOp::Pair => {
@@ -496,7 +502,7 @@ pub fn infer_primop(is: &mut InferState, op: &PrimOp) -> Type {
         PrimOp::Cons => {
             let a = is.fresh();
             let ls = type_list(a.clone());
-            type_arr_multi(vec![a, ls.clone()], ls.clone())
+            type_arr_multi(vec![a, ls.clone()], ls)
         }
         PrimOp::Nil => type_list(is.fresh()),
     }

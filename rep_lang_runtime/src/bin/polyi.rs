@@ -12,7 +12,7 @@ use poly::{
     infer::*,
 };
 
-const BANNER: &'static str = r#"
+const BANNER: &str = r#"
                  __
     ____  ____  / /_  __      __________
    / __ \/ __ \/ / / / /_____/ ___/ ___/

@@ -14,7 +14,7 @@ pub enum ValueInferenceError {
 pub fn infer_value(is: &mut InferState, value: &Value) -> Result<types::Type, ValueInferenceError> {
     let (ty, csts) = infer_value_internal(is, value)?;
 
-    let subst = run_solve(csts).map_err(|x| ValueInferenceError::TyErr(x))?;
+    let subst = run_solve(csts).map_err(ValueInferenceError::TyErr)?;
     Ok(ty.apply(&subst))
 }
 
