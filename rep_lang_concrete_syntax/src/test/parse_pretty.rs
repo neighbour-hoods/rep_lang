@@ -22,8 +22,9 @@ pub mod parse_unit {
     use combine::parser::Parser;
     use combine::stream::easy;
 
-    use crate::syntax::{Lit, *};
-    use crate::{parse::*, util::pretty::*};
+    use rep_lang_core::abstract_syntax::{Lit, *};
+
+    use crate::{parse::*, pretty::ppr_expr, util::pretty::*};
     use Expr::*;
 
     fn n() -> Name {
@@ -148,7 +149,7 @@ pub mod parse_unit {
     #[test]
     fn ex_qc_discovered_0() {
         let e0 = App(Box::new(Prim(PrimOp::Sub)), Box::new(Lit(Lit::LInt(84))));
-        let s = to_pretty(e0.ppr(), 80);
+        let s = to_pretty(ppr_expr(&e0), 80);
         check_parse_expr!(&s[..], e0);
     }
 
@@ -156,7 +157,7 @@ pub mod parse_unit {
     fn ex_qc_discovered_1() {
         let e0 = Var(Name("fixio".to_string()));
         let e1 = App(Box::new(e0), Box::new(Lit(Lit::LInt(42))));
-        let s = to_pretty(e1.ppr(), 80);
+        let s = to_pretty(ppr_expr(&e1), 80);
         check_parse_expr!(&s[..], e1);
     }
 
@@ -164,7 +165,7 @@ pub mod parse_unit {
     fn ex_qc_discovered_2() {
         let e0 = Var(Name("letio".to_string()));
         let e1 = App(Box::new(e0), Box::new(Lit(Lit::LInt(42))));
-        let s = to_pretty(e1.ppr(), 80);
+        let s = to_pretty(ppr_expr(&e1), 80);
         check_parse_expr!(&s[..], e1);
     }
 
@@ -172,7 +173,7 @@ pub mod parse_unit {
     fn ex_qc_discovered_3() {
         let e0 = Var(Name("lamio".to_string()));
         let e1 = App(Box::new(e0), Box::new(Lit(Lit::LInt(42))));
-        let s = to_pretty(e1.ppr(), 80);
+        let s = to_pretty(ppr_expr(&e1), 80);
         check_parse_expr!(&s[..], e1);
     }
 
@@ -180,7 +181,7 @@ pub mod parse_unit {
     fn ex_qc_discovered_4() {
         let e0 = Var(Name("ifio".to_string()));
         let e1 = App(Box::new(e0), Box::new(Lit(Lit::LInt(42))));
-        let s = to_pretty(e1.ppr(), 80);
+        let s = to_pretty(ppr_expr(&e1), 80);
         check_parse_expr!(&s[..], e1);
     }
 
@@ -189,7 +190,7 @@ pub mod parse_unit {
         let e0 = Var(Name("truej".to_string()));
         let e1 = Var(Name("falsek".to_string()));
         let e2 = App(Box::new(e0), Box::new(e1));
-        let s = to_pretty(e2.ppr(), 80);
+        let s = to_pretty(ppr_expr(&e2), 80);
         check_parse_expr!(&s[..], e2);
     }
 }
@@ -198,14 +199,14 @@ pub mod roundtrip {
     use combine::parser::Parser;
     use combine::stream::easy;
 
-    use crate::{parse::*, syntax::*, util::pretty::*};
+    use crate::{
+        parse::*, pretty::ppr_expr, test_helpers::abstract_syntax::WrappedExpr, util::pretty::*,
+    };
 
-    // this test does not need to be a quickcheck property - we could just
-    // iterate over all enum constructors of `PrimOp`, but I'm not sure how
-    // to best do that, and this works well enough.
     #[quickcheck]
-    fn parse_pretty_roundtrip(e: Expr) -> bool {
-        let s = to_pretty(e.ppr(), 80);
+    fn parse_pretty_roundtrip(w_e: WrappedExpr) -> bool {
+        let WrappedExpr(e) = w_e;
+        let s = to_pretty(ppr_expr(&e), 80);
         let res = expr().parse(easy::Stream(&s[..]));
         match res {
             Ok((_, stream)) if stream == easy::Stream("") => true,

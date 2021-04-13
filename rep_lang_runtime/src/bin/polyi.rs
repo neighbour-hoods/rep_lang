@@ -3,13 +3,13 @@ use combine::stream::easy;
 use rustyline::{error::ReadlineError, Editor};
 use std::collections::HashMap;
 
+use rep_lang_concrete_syntax::{parse::defn_or_it_expr, util::pretty::to_pretty};
+use rep_lang_core::abstract_syntax::Defn;
+
 use poly::{
     env::*,
     eval::{eval_, EvalState},
     infer::*,
-    parse::defn_or_it_expr,
-    syntax::Defn,
-    util::pretty::to_pretty,
 };
 
 const BANNER: &'static str = r#"

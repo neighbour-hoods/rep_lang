@@ -2,12 +2,18 @@ use quickcheck::{empty_shrinker, single_shrinker, Arbitrary, Gen};
 use rand::Rng;
 use std::iter;
 
-use crate::parse::reserved;
-use crate::syntax::*;
+use crate::abstract_syntax::*;
+
+// this code is unused within this crate because it's library code. we know
+// that, so we disable the warnings.
+#[allow(dead_code)]
+pub fn arbitrary_expr<G: Gen>(g: &mut G, reserved: &Vec<String>) -> Expr {
+    gen_expr(g, g.size(), reserved)
+}
 
 impl Arbitrary for Expr {
-    fn arbitrary<G: Gen>(g: &mut G) -> Expr {
-        gen_expr(g, g.size())
+    fn arbitrary<G: Gen>(_g: &mut G) -> Expr {
+        panic!("don't use this - use arbitrary_expr")
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = Expr>> {
@@ -66,105 +72,92 @@ impl Arbitrary for Expr {
 // for recursive calls will likely lead to unpredictably sized (potentially very large) `Expr`s.
 // by passing an explicit size parameter, we can implement this directly - dividing the size
 // parameter as we recur, and terminating when it hits a bound.
-fn gen_expr<G: Gen>(g: &mut G, size: usize) -> Expr {
+#[allow(dead_code)]
+pub fn gen_expr<G: Gen>(g: &mut G, size: usize, reserved: &Vec<String>) -> Expr {
     let upper_bound = if size < 1 { 3 } else { 8 };
     match g.gen_range(0, upper_bound) {
-        0 => Expr::Var(Name::arbitrary(g)),
-        1 => Expr::Lit(Lit::arbitrary(g)),
-        2 => Expr::Prim(PrimOp::arbitrary(g)),
+        0 => Expr::Var(arbitrary_name(g, reserved)),
+        1 => Expr::Lit(arbitrary_lit(g)),
+        2 => Expr::Prim(arbitrary_primop(g)),
         3 => {
-            let f = gen_expr(g, size / 2);
-            let a = gen_expr(g, size / 2);
+            let f = gen_expr(g, size / 2, reserved);
+            let a = gen_expr(g, size / 2, reserved);
             Expr::App(Box::new(f), Box::new(a))
         }
         4 => {
-            let nm = Name::arbitrary(g);
-            let bd = gen_expr(g, size * 5 / 6);
+            let nm = arbitrary_name(g, reserved);
+            let bd = gen_expr(g, size * 5 / 6, reserved);
             Expr::Lam(nm, Box::new(bd))
         }
         5 => {
-            let nm = Name::arbitrary(g);
-            let e = gen_expr(g, size / 2);
-            let bd = gen_expr(g, size / 2);
+            let nm = arbitrary_name(g, reserved);
+            let e = gen_expr(g, size / 2, reserved);
+            let bd = gen_expr(g, size / 2, reserved);
             Expr::Let(nm, Box::new(e), Box::new(bd))
         }
         6 => {
-            let tst = gen_expr(g, size / 3);
-            let thn = gen_expr(g, size / 3);
-            let els = gen_expr(g, size / 3);
+            let tst = gen_expr(g, size / 3, reserved);
+            let thn = gen_expr(g, size / 3, reserved);
+            let els = gen_expr(g, size / 3, reserved);
             Expr::If(Box::new(tst), Box::new(thn), Box::new(els))
         }
         7 => {
-            let bd = gen_expr(g, size * 5 / 6);
+            let bd = gen_expr(g, size * 5 / 6, reserved);
             Expr::Fix(Box::new(bd))
         }
         _ => panic!("impossible: gen_expr: gen out of bounds"),
     }
 }
 
-impl Arbitrary for Lit {
-    fn arbitrary<G: Gen>(g: &mut G) -> Lit {
-        match g.gen_range(0, 2) {
-            0 => Lit::LInt(i64::arbitrary(g)),
-            1 => Lit::LBool(bool::arbitrary(g)),
-            _ => panic!("impossible: Arbitrary: Lit: gen out of bounds"),
+#[allow(dead_code)]
+pub fn arbitrary_lit<G: Gen>(g: &mut G) -> Lit {
+    match g.gen_range(0, 2) {
+        0 => Lit::LInt(i64::arbitrary(g)),
+        1 => Lit::LBool(bool::arbitrary(g)),
+        _ => panic!("impossible: Arbitrary: Lit: gen out of bounds"),
+    }
+}
+
+#[allow(dead_code)]
+pub fn arbitrary_name<G: Gen>(g: &mut G, reserved: &Vec<String>) -> Name {
+    let len = g.gen_range(3, 8);
+    loop {
+        let s = iter::repeat(gen_alpha_char(g)).take(len).collect();
+        if !reserved.contains(&s) {
+            return Name(s);
         }
     }
 }
 
-impl Arbitrary for Name {
-    fn arbitrary<G: Gen>(g: &mut G) -> Name {
-        let len = g.gen_range(3, 8);
-        let res = reserved();
-        loop {
-            let s = iter::repeat(gen_alpha_char(g)).take(len).collect();
-            if !res.contains(&s) {
-                return Name(s);
-            }
-        }
+#[allow(dead_code)]
+pub fn arbitrary_primop<G: Gen>(g: &mut G) -> PrimOp {
+    match g.gen_range(0, 12) {
+        0 => PrimOp::Add,
+        1 => PrimOp::Sub,
+        2 => PrimOp::Mul,
+        3 => PrimOp::Eql,
+        4 => PrimOp::Null,
+        5 => PrimOp::Map,
+        6 => PrimOp::Foldl,
+        7 => PrimOp::Pair,
+        8 => PrimOp::Fst,
+        9 => PrimOp::Snd,
+        10 => PrimOp::Cons,
+        11 => PrimOp::Nil,
+        _ => panic!("impossible: Arbitrary: PrimOp: gen out of bounds"),
     }
 }
 
 impl Arbitrary for PrimOp {
     fn arbitrary<G: Gen>(g: &mut G) -> PrimOp {
-        match g.gen_range(0, 12) {
-            0 => PrimOp::Add,
-            1 => PrimOp::Sub,
-            2 => PrimOp::Mul,
-            3 => PrimOp::Eql,
-            4 => PrimOp::Null,
-            5 => PrimOp::Map,
-            6 => PrimOp::Foldl,
-            7 => PrimOp::Pair,
-            8 => PrimOp::Fst,
-            9 => PrimOp::Snd,
-            10 => PrimOp::Cons,
-            11 => PrimOp::Nil,
-            _ => panic!("impossible: Arbitrary: PrimOp: gen out of bounds"),
-        }
+        arbitrary_primop(g)
     }
 }
 
+#[allow(dead_code)]
 fn gen_alpha_char<G: Gen>(g: &mut G) -> char {
     const ALPHA_CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
     const RANGE: usize = ALPHA_CHARSET.len();
     let idx = g.gen_range(0, RANGE);
     return ALPHA_CHARSET[idx as usize] as char;
-}
-
-// tests
-
-pub mod syntax_test {
-    use crate::{
-        infer::{infer_primop, InferState},
-        syntax::{primop_arity, PrimOp},
-        types::type_arity,
-    };
-
-    #[quickcheck]
-    fn primop_arity_eql(op: PrimOp) -> bool {
-        let mut is = InferState::new();
-        let ty = infer_primop(&mut is, &op);
-        primop_arity(&op) == type_arity(ty)
-    }
 }

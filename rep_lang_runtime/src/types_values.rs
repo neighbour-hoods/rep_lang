@@ -1,7 +1,8 @@
+use rep_lang_core::abstract_syntax::{Expr, Name};
+
 use super::{
     eval::Value,
     infer::{run_solve, Constraint, InferState, TypeError},
-    syntax::{Expr, Name},
     types,
 };
 

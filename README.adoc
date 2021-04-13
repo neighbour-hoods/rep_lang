@@ -1,13 +1,14 @@
-= poly-rs
+= reputation language
 
-a polymorphic language using Hindley-Milner type inference, based on on sdiehl's https://github.com/sdiehl/write-you-a-haskell/tree/master/chapter7/poly_constraints[poly_constraints] language and his http://dev.stephendiehl.com/fun/006_hindley_milner.html[tutorial].
+this repository consists of 3 crates at present:
 
-reimplemented in Rust 🦀 of course.
-and featuring LISP syntax for ease of parsing.
+* rep_lang_core
+* rep_lang_concrete_syntax
+* rep_lang_runtime
 
 == building & running
 
-with https://nixos.org/download.html[`nix` installed]:
+with https://nixos.org/download.html[`nix`] installed:
 
 ----
 $ nix-shell
@@ -18,7 +19,7 @@ $ cargo run --bin polyi
 < ctrl-d to exit >
 
 # interpret code from a file
-$ cargo run --bin poly ./examples/ex1.poly
+$ cargo run --bin poly ./rep_lang_concrete_syntax/examples/ex1.poly
 < output >
 ----
 

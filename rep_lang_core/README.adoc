@@ -1,0 +1,3 @@
+= rep_lang_core
+
+core types for the reputation language, extracted because both the parser and runtime depend on them.

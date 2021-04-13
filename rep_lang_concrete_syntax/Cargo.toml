@@ -1,0 +1,17 @@
+[package]
+name = "rep_lang_concrete_syntax"
+version = "0.1.0"
+authors = ["Michael Hueschen <m@mhueschen.space>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+combine = "4.3.2"
+pretty = "0.10.0"
+quickcheck = "0.9.2"
+rand = "0.7"
+rep_lang_core = { path = "../rep_lang_core" }
+
+[dev-dependencies]
+quickcheck_macros = "0.9.1"
