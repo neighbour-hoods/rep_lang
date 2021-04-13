@@ -2,7 +2,7 @@ use quickcheck::{empty_shrinker, single_shrinker, Arbitrary, Gen};
 use rand::Rng;
 use std::iter;
 
-use crate::syntax::*;
+use crate::abstract_syntax::*;
 
 // this code is unused within this crate because it's library code. we know
 // that, so we disable the warnings.

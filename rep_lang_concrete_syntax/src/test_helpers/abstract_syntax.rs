@@ -1,6 +1,6 @@
 use quickcheck::{Arbitrary, Gen};
 
-use rep_lang_core::{syntax::*, test_helpers::syntax::arbitrary_expr};
+use rep_lang_core::{abstract_syntax::*, test_helpers::abstract_syntax::arbitrary_expr};
 
 use crate::parse::reserved;
 

@@ -1,6 +1,6 @@
 use quickcheck::quickcheck;
 
-use rep_lang_core::syntax::{primop_arity, PrimOp};
+use rep_lang_core::abstract_syntax::{primop_arity, PrimOp};
 
 use crate::{
     infer::{infer_primop, InferState},

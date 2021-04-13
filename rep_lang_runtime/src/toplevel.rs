@@ -3,8 +3,8 @@ use combine::stream::easy;
 use std::collections::HashMap;
 
 use rep_lang_core::{
-    app, syntax,
-    syntax::{Expr, Name},
+    app, abstract_syntax,
+    abstract_syntax::{Expr, Name},
 };
 use rep_lang_concrete_syntax::parse::program;
 
@@ -20,7 +20,7 @@ use super::{
 // uses of `Result<_, String>` are unprincipled. it's better to return a specific error type.
 
 /// throws an error if the document doesn’t pass type checking
-pub fn parse_calculation(dsl_document: String) -> Result<syntax::Program, String> {
+pub fn parse_calculation(dsl_document: String) -> Result<abstract_syntax::Program, String> {
     match program().parse(easy::Stream(&dsl_document[..])) {
         // TODO this is janky - perhaps we can just return the error?
         // https://docs.rs/combine/4.5.2/combine/trait.StreamOnce.html#associatedtype.Error
@@ -32,7 +32,7 @@ pub fn parse_calculation(dsl_document: String) -> Result<syntax::Program, String
 /// return the "scheme" of the body of a program. this may have free type variables in it.
 /// the `Type` contained within can be fed to `type_arguments` & `type_return`.
 // types::Type::TRelated(op, Type, Type) needs to be implemented to support calculated / derived units
-pub fn get_calculation_type(program: syntax::Program) -> Result<types::Scheme, String> {
+pub fn get_calculation_type(program: abstract_syntax::Program) -> Result<types::Scheme, String> {
     match infer_program(Env::new(), &program) {
         Ok((sc, _env)) => Ok(sc),
         Err(err) => Err(format!("type error: {:?}", err)),
@@ -40,7 +40,7 @@ pub fn get_calculation_type(program: syntax::Program) -> Result<types::Scheme, S
 }
 
 pub struct ReputationCalculationOutput {
-    pub rcr_calculation: syntax::Expr,
+    pub rcr_calculation: abstract_syntax::Expr,
     pub scheme: types::Scheme,
     pub value: eval::Value,
 }
@@ -55,7 +55,7 @@ pub enum ReputationCalculationError {
 }
 
 pub fn reduce_calculation(
-    prog: syntax::Program,
+    prog: abstract_syntax::Program,
     input_data: &mut dyn Iterator<Item = eval::Value>,
 ) -> Result<ReputationCalculationOutput, ReputationCalculationError> {
     // infer type of program
@@ -65,7 +65,7 @@ pub fn reduce_calculation(
     // conjure up fresh names for the provided `Values` (from the Iterator) using
     // `EvalState::fresh`, if there are any.
     let mut es = eval::EvalState::new();
-    let paired_name_vals: Vec<(syntax::Name, eval::Value)> =
+    let paired_name_vals: Vec<(abstract_syntax::Name, eval::Value)> =
         input_data.map(|val| (es.fresh(), val)).collect();
 
     // match the arity of the program body with the # of `Value`s. if mismatch, throw error.
@@ -110,7 +110,7 @@ pub fn reduce_calculation(
 
     // evaluate the program defns
     let mut eval_env = HashMap::new();
-    for syntax::Defn(nm, bd) in prog.p_defns.iter() {
+    for abstract_syntax::Defn(nm, bd) in prog.p_defns.iter() {
         let val = eval::eval_(&eval_env, &mut es, bd);
         eval_env.insert(nm.clone(), val);
     }

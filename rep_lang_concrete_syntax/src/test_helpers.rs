@@ -1,1 +1,1 @@
-pub mod syntax;
+pub mod abstract_syntax;

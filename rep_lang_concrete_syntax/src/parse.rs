@@ -3,7 +3,7 @@ use combine::parser::char::{alpha_num, char, digit, letter, spaces, string};
 use combine::stream::{Stream, StreamErrorFor};
 use combine::{attempt, between, choice, many, many1, not_followed_by, optional, parser, Parser};
 
-use rep_lang_core::syntax::*;
+use rep_lang_core::abstract_syntax::*;
 
 // `impl Parser` can be used to create reusable parsers with zero overhead
 pub fn expr_<Input>() -> impl Parser<Input, Output = Expr>
