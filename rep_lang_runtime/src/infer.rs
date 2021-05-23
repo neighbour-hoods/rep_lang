@@ -218,13 +218,6 @@ fn infer(
             csts_e.append(&mut csts_bd);
             Ok((t_bd, csts_e))
         }
-        Expr::Fix(bd) => {
-            let (t_bd, mut csts_bd) = infer(env, is, bd)?;
-            let tv = is.fresh();
-            let cst = Constraint(t_bd, Type::TArr(Box::new(tv.clone()), Box::new(tv.clone())));
-            csts_bd.push(cst);
-            Ok((tv, csts_bd))
-        }
         Expr::Prim(op) => {
             // TODO figure out if this is borked. `poly` takes the approach of
             // wrapping primop application, whereas I allow primops to be first

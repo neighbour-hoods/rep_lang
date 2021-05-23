@@ -47,7 +47,6 @@ pub fn ppr_expr(expr: &Expr) -> RcDoc<()> {
             let docs = vec![RcDoc::text("if"), tst_, thn_, els_];
             parens(RcDoc::intersperse(docs, sp!()))
         }
-        Fix(x) => parens(RcDoc::text("fix ").append(ppr_expr(x))),
         Prim(op) => ppr_primop(op),
     }
 }

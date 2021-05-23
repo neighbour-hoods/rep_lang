@@ -9,7 +9,6 @@ pub enum Expr {
     Let(Name, Box<Expr>, Box<Expr>),
     Lit(Lit),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
-    Fix(Box<Expr>),
     Prim(PrimOp),
 }
 
