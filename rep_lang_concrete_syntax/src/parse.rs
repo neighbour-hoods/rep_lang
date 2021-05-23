@@ -31,6 +31,7 @@ where
         res_str("+").map(|_| PrimOp::Add),
         res_str("-").map(|_| PrimOp::Sub),
         res_str("*").map(|_| PrimOp::Mul),
+        res_str("/").map(|_| PrimOp::Div),
         res_str("==").map(|_| PrimOp::Eql),
         attempt(res_str("null").map(|_| PrimOp::Null)),
         res_str("map").map(|_| PrimOp::Map),
