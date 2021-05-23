@@ -39,9 +39,6 @@ pub mod parse_unit {
     fn e2() -> Expr {
         App(Box::new(e1()), Box::new(e1()))
     }
-    fn e3() -> Expr {
-        Fix(Box::new(e0()))
-    }
     fn e4() -> Expr {
         If(Box::new(e0()), Box::new(e0()), Box::new(e0()))
     }
@@ -50,13 +47,6 @@ pub mod parse_unit {
     }
     fn e6() -> Expr {
         Let(Name("v".to_string()), Box::new(e0()), Box::new(e0()))
-    }
-    fn _e7() -> Expr {
-        If(
-            Box::new(Lit(Lit::LBool(true))),
-            Box::new(e2()),
-            Box::new(e3()),
-        )
     }
 
     #[test]
@@ -72,11 +62,6 @@ pub mod parse_unit {
     #[test]
     fn ex2() {
         check_parse_expr!("((lam [x] x) (lam [x] x))", e2());
-    }
-
-    #[test]
-    fn ex3() {
-        check_parse_expr!("(fix x)", e3());
     }
 
     #[test]
