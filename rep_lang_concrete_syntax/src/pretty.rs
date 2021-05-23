@@ -65,6 +65,7 @@ pub fn ppr_primop(op: &PrimOp) -> RcDoc<()> {
         Add => RcDoc::text("+"),
         Sub => RcDoc::text("-"),
         Mul => RcDoc::text("*"),
+        Div => RcDoc::text("/"),
         Eql => RcDoc::text("=="),
         Null => RcDoc::text("null"),
         Map => RcDoc::text("map"),

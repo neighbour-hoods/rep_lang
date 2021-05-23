@@ -99,6 +99,10 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                     (VInt(a_), VInt(b_)) => VInt(a_ * b_),
                     _ => panic!("*: bad types"),
                 },
+                PrimOp::Div => match (&args_v[0], &args_v[1]) {
+                    (VInt(a_), VInt(b_)) => VInt(a_ / b_),
+                    _ => panic!("*: bad types"),
+                },
                 PrimOp::Eql => match (&args_v[0], &args_v[1]) {
                     (VInt(a_), VInt(b_)) => VBool(a_ == b_),
                     _ => panic!("==: bad types"),

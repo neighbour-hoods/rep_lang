@@ -462,8 +462,9 @@ fn infer_lit(lit: &Lit) -> Type {
 pub fn infer_primop(is: &mut InferState, op: &PrimOp) -> Type {
     match op {
         PrimOp::Add => binop_arr(type_int(), type_int()),
-        PrimOp::Mul => binop_arr(type_int(), type_int()),
         PrimOp::Sub => binop_arr(type_int(), type_int()),
+        PrimOp::Mul => binop_arr(type_int(), type_int()),
+        PrimOp::Div => binop_arr(type_int(), type_int()),
         PrimOp::Eql => binop_arr(type_int(), type_bool()),
         PrimOp::Null => {
             let tv = is.fresh();
