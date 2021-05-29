@@ -16,3 +16,8 @@ fn primop_arity_eql(op: PrimOp) -> bool {
     let ty = infer_primop(&mut is, &op);
     primop_arity(&op) == type_arity(ty)
 }
+
+#[test]
+fn test1() {
+    assert!(false, "wat")
+}

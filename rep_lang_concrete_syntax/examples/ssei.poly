@@ -1,0 +1,24 @@
+(defn mean
+  (lam [xs]
+    (/ (foldl + 0 xs)
+       (foldl (lam [acc x] (+ acc 1)) 0 xs))))
+
+(defn doublemean
+  (lam [xs ys]
+    (+ (/ (foldl + 0 xs)
+          (foldl (lam [acc x] (+ acc 1)) 0 xs))
+       (/ (foldl + 0 ys)
+          (foldl (lam [acc x] (+ acc 1)) 0 ys)))))
+
+(defn doublemeann
+  (lam [xs ys]
+    (+ (mean xs)
+       (mean ys))))
+
+(defn doublemeannn
+  (lam [xs]
+    (lam [ys]
+      (+ (mean xs)
+         (mean ys)))))
+
+doublemeannn

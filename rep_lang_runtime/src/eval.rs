@@ -230,6 +230,18 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
     }
 }
 
+// BK
+pub fn is_ssei_able(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> bool {
+    match eval_(env, es, expr) {
+        VClosure(nm, bd, env_clo) => true,
+        _ => false,
+    }
+}
+
+pub fn ssei(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
+    todo!()
+}
+
 enum PrimOpApplyCase {
     FullyApplied(PrimOp, Vec<Expr>),
     PartiallyApplied(Expr),
