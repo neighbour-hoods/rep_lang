@@ -36,6 +36,7 @@ impl Value {
     }
 }
 
+#[derive(Debug)]
 pub struct EvalState(u64);
 
 impl EvalState {
@@ -69,6 +70,16 @@ pub fn eval_program(prog: &Program) -> (Value, TermEnv) {
         env.insert(nm.clone(), val);
     }
     (eval_(&env, &mut es, &prog.p_body), env)
+}
+
+pub fn eval_defns(prog: &Program) -> (EvalState, TermEnv) {
+    let mut env = HashMap::new();
+    let mut es = EvalState::new();
+    for Defn(nm, bd) in prog.p_defns.iter() {
+        let val = eval_(&env, &mut es, bd);
+        env.insert(nm.clone(), val);
+    }
+    (es, env)
 }
 
 pub fn eval(expr: &Expr) -> Value {
