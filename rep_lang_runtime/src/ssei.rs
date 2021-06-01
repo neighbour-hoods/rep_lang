@@ -25,12 +25,12 @@ pub fn beta_reduce(body: &Expr) -> Expr {
 pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> Expr {
     match body {
         Var(_) => body.clone(),
-        App(e1, e2) if **e2 == Var(var_name.clone()) => {
-            let e1_ = inline_clo(var_name, env, e1);
-            App(Box::new(e1_), e2.clone())
-        }
         App(e1, e2) => match &**e1 {
-            Lam(nm, bd) => subst_var(&nm, e2, &bd),
+            Var(clo_name) if **e2 == Var(var_name.clone()) => {
+                let e1_ = inline_clo(var_name, env, clo_name);
+                inline_ssei_applications(env, var_name, &App(Box::new(e1_), e2.clone()))
+            }
+            Lam(nm, bd) => inline_ssei_applications(env, var_name, &subst_var(&nm, e2, &bd)),
             _ => {
                 let e1_ = inline_ssei_applications(env, var_name, e1);
                 let e2_ = inline_ssei_applications(env, var_name, e2);
@@ -88,16 +88,13 @@ pub fn subst_var(name: &Name, binding: &Expr, expr: &Expr) -> Expr {
 }
 
 // problem - how do we inline a closure? it can't have any free variables in the environment...
-pub fn inline_clo(var_name: &Name, env: &TermEnv, expr: &Expr) -> Expr {
-    match expr {
-        Var(nm_clo) => match env.get(&nm_clo) {
-            Some(VClosure(nm_arg, bd, env_clo)) if env_clo.is_empty() => {
-                subst_var(nm_arg, &Var(var_name.clone()), bd)
-            }
-            Some(_) => expr.clone(),
-            None => panic!("inline_clo: impossible: clo name not in env"),
-        },
-        _ => expr.clone(),
+pub fn inline_clo(var_name: &Name, env: &TermEnv, clo_name: &Name) -> Expr {
+    match env.get(&clo_name) {
+        Some(VClosure(nm_arg, bd, env_clo)) if env_clo.is_empty() => {
+            subst_var(nm_arg, &Var(var_name.clone()), bd)
+        }
+        Some(_) => panic!("inline_clo: impossible: clo was not a clo"),
+        None => panic!("inline_clo: impossible: clo name not in env"),
     }
 }
 
