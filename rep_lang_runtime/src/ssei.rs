@@ -29,11 +29,14 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
             let e1_ = inline_clo(var_name, env, e1);
             App(Box::new(e1_), e2.clone())
         }
-        App(e1, e2) => {
-            let e1_ = inline_ssei_applications(env, var_name, e1);
-            let e2_ = inline_ssei_applications(env, var_name, e2);
-            App(Box::new(e1_), Box::new(e2_))
-        }
+        App(e1, e2) => match &**e1 {
+            Lam(nm, bd) => subst_var(&nm, e2, &bd),
+            _ => {
+                let e1_ = inline_ssei_applications(env, var_name, e1);
+                let e2_ = inline_ssei_applications(env, var_name, e2);
+                App(Box::new(e1_), Box::new(e2_))
+            }
+        },
         Lam(nm, bd) => Lam(
             nm.clone(),
             Box::new(inline_ssei_applications(env, var_name, bd)),
@@ -41,7 +44,7 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
         // if the let simply binds our var_name to a new name, we can eliminate the
         // let and perform substitutions inside the body.
         Let(nm, e, bd) if **e == Var(var_name.clone()) => {
-            inline_ssei_applications(env, var_name, &subst_var(nm, var_name, &bd))
+            inline_ssei_applications(env, var_name, &subst_var(nm, &Var(var_name.clone()), &bd))
         }
         Let(nm, e, bd) => {
             let e_ = inline_ssei_applications(env, var_name, e);
@@ -59,26 +62,26 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
     }
 }
 
-pub fn subst_var(old_name: &Name, new_name: &Name, expr: &Expr) -> Expr {
+pub fn subst_var(name: &Name, binding: &Expr, expr: &Expr) -> Expr {
     match expr {
-        Var(name) if name == old_name => Var(new_name.clone()),
+        Var(nm) if nm == name => binding.clone(),
         Var(_) | Prim(_) | Lit(_) => expr.clone(),
 
         App(e1, e2) => {
-            let e1_ = subst_var(old_name, new_name, e1);
-            let e2_ = subst_var(old_name, new_name, e2);
+            let e1_ = subst_var(name, binding, e1);
+            let e2_ = subst_var(name, binding, e2);
             App(Box::new(e1_), Box::new(e2_))
         }
-        Lam(nm, bd) => Lam(nm.clone(), Box::new(subst_var(old_name, new_name, bd))),
+        Lam(nm, bd) => Lam(nm.clone(), Box::new(subst_var(name, binding, bd))),
         Let(nm, e, bd) => {
-            let e_ = subst_var(old_name, new_name, e);
-            let bd_ = subst_var(old_name, new_name, bd);
+            let e_ = subst_var(name, binding, e);
+            let bd_ = subst_var(name, binding, bd);
             Let(nm.clone(), Box::new(e_), Box::new(bd_))
         }
         If(tst, thn, els) => {
-            let tst_ = subst_var(old_name, new_name, tst);
-            let thn_ = subst_var(old_name, new_name, thn);
-            let els_ = subst_var(old_name, new_name, els);
+            let tst_ = subst_var(name, binding, tst);
+            let thn_ = subst_var(name, binding, thn);
+            let els_ = subst_var(name, binding, els);
             If(Box::new(tst_), Box::new(thn_), Box::new(els_))
         }
     }
@@ -89,7 +92,7 @@ pub fn inline_clo(var_name: &Name, env: &TermEnv, expr: &Expr) -> Expr {
     match expr {
         Var(nm_clo) => match env.get(&nm_clo) {
             Some(VClosure(nm_arg, bd, env_clo)) if env_clo.is_empty() => {
-                subst_var(nm_arg, var_name, bd)
+                subst_var(nm_arg, &Var(var_name.clone()), bd)
             }
             Some(_) => expr.clone(),
             None => panic!("inline_clo: impossible: clo name not in env"),
