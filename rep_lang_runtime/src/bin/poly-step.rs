@@ -4,9 +4,14 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 
-use rep_lang_concrete_syntax::{parse::program, util::pretty::to_pretty};
+use rep_lang_concrete_syntax::{parse::program, pretty::ppr_expr, util::pretty::to_pretty};
 
-use poly::{env::Env, eval::eval_defns, infer::infer_program};
+use poly::{
+    env::Env,
+    eval::eval_defns,
+    infer::infer_program,
+    ssei::{is_ssei_able, ssei},
+};
 
 fn main() -> std::io::Result<()> {
     let width = 80;
@@ -25,12 +30,21 @@ fn main() -> std::io::Result<()> {
                     Ok((sc, env)) => {
                         println!("{:?}\n\n{:?}\n", sc, env);
                         let ty = to_pretty(sc.ppr(), width);
-                        let (es, env) = eval_defns(&prog);
+                        let (mut es, env) = eval_defns(&prog);
                         println!("es: {:?}", es);
-                        for (k,v) in env.iter() {
+                        for (k, v) in env.iter() {
                             let val_str = to_pretty(v.ppr(), width);
                             println!("{:?} : {}", k, val_str);
                         }
+                        println!(
+                            "is_ssei_able: {}",
+                            is_ssei_able(&env, &mut es, &prog.p_body)
+                        );
+                        println!(
+                            "ssei: {}",
+                            ssei(&env, &mut es, &prog.p_body)
+                                .map_or("".into(), |expr| to_pretty(ppr_expr(&expr), width))
+                        );
                         Ok(())
                     }
                     Err(err) => panic!("type error: {:?}", err),

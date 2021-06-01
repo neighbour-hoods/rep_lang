@@ -1,0 +1,8 @@
+(defn weird_mean
+  (lam [us]
+    ((lam [xs]
+       (/ (foldl + 0 xs)
+          (foldl (lam [acc x] (+ acc 1)) 0 xs))
+     us))))
+
+mean

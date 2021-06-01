@@ -1,0 +1,12 @@
+(defn mean
+  (lam [xs]
+    (/ (foldl + 0 xs)
+       (foldl (lam [acc x] (+ acc 1)) 0 xs))))
+
+(defn checkLamLet
+  (lam [xs]
+    (+ ((lam [zs] (mean zs))
+        xs)
+       (let ([ys xs]) (mean ys)))))
+
+checkLamLet
