@@ -1,0 +1,13 @@
+(defn verapplam
+  (lam [xs]
+    ((lam [x] (+ x x))
+     (foldl + 0 xs))))
+
+(defn verlet
+  (lam [xs]
+    (let ([x (foldl + 0 xs)])
+      (+ x x))))
+
+(lam [zs]
+  (+ (verapplam zs)
+     (verlet zs)))
