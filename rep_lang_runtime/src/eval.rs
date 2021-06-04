@@ -1,5 +1,9 @@
 use pretty::RcDoc;
-use std::{cmp::Ordering, collections::HashMap, iter};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+    iter,
+};
 
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 use rep_lang_core::{
@@ -301,5 +305,44 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
                 }
             }
         }
+    }
+}
+
+pub fn expr_free_vars(expr: &Expr, mut bound: HashSet<Name>) -> Vec<Name> {
+    match expr {
+        Expr::Var(nm) => {
+            if bound.contains(nm) {
+                vec![]
+            } else {
+                vec![nm.clone()]
+            }
+        }
+        Expr::App(e1, e2) => {
+            let mut v1 = expr_free_vars(e1, bound.clone());
+            let mut v2 = expr_free_vars(e2, bound);
+            v1.append(&mut v2);
+            v1
+        }
+        Expr::Lam(nm, bd) => {
+            bound.insert(nm.clone());
+            expr_free_vars(bd, bound)
+        }
+        Expr::Let(nm, e, bd) => {
+            let mut v1 = expr_free_vars(e, bound.clone());
+            bound.insert(nm.clone());
+            let mut v2 = expr_free_vars(bd, bound);
+            v1.append(&mut v2);
+            v1
+        }
+        Expr::Lit(Lit) => vec![],
+        Expr::If(tst, thn, els) => {
+            let mut v1 = expr_free_vars(tst, bound.clone());
+            let mut v2 = expr_free_vars(thn, bound.clone());
+            let mut v3 = expr_free_vars(els, bound);
+            v1.append(&mut v2);
+            v1.append(&mut v3);
+            v1
+        }
+        Expr::Prim(PrimOp) => vec![],
     }
 }

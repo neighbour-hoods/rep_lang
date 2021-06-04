@@ -1,5 +1,8 @@
-use crate::eval::{eval_, EvalState, TermEnv, Value, Value::*};
-use rep_lang_concrete_syntax::{sp, util::pretty::parens};
+use crate::eval::{eval_, expr_free_vars, EvalState, TermEnv, Value, Value::*};
+use rep_lang_concrete_syntax::{
+    sp,
+    util::pretty::{parens, to_pretty},
+};
 use rep_lang_core::{
     abstract_syntax::{primop_arity, Defn, Expr, Expr::*, Lit, Name, PrimOp, Program},
     app, lam,
@@ -87,13 +90,21 @@ pub fn subst_var(name: &Name, binding: &Expr, expr: &Expr) -> Expr {
     }
 }
 
-// problem - how do we inline a closure? it can't have any free variables in the environment...
+// problem - how do we inline a closure? it can't contain any free variables...
 pub fn inline_clo(var_name: &Name, env: &TermEnv, clo_name: &Name) -> Expr {
     match env.get(&clo_name) {
-        Some(VClosure(nm_arg, bd, env_clo)) if env_clo.is_empty() => {
-            subst_var(nm_arg, &Var(var_name.clone()), bd)
+        Some(VClosure(nm_arg, bd, env_clo)) => {
+            let free_vars = expr_free_vars(bd, vec![nm_arg.clone()].into_iter().collect());
+            if free_vars.is_empty() {
+                subst_var(nm_arg, &Var(var_name.clone()), bd)
+            } else {
+                panic!("inline_clo: clo body contains free vars: {:?}", free_vars)
+            }
         }
-        Some(_) => panic!("inline_clo: impossible: clo was not a clo"),
+        Some(x) => panic!(
+            "inline_clo: impossible: clo was not a clo: {}",
+            to_pretty(x.ppr(), 80)
+        ),
         None => panic!("inline_clo: impossible: clo name not in env"),
     }
 }
