@@ -34,7 +34,7 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
                 inline_ssei_applications(env, var_name, &App(Box::new(e1_), e2.clone()))
             }
             // TODO this is a potentially problematic optimization
-            Lam(nm, bd) => inline_ssei_applications(env, var_name, &subst_var(&nm, e2, &bd)),
+            // Lam(nm, bd) => inline_ssei_applications(env, var_name, &subst_var(&nm, e2, &bd)),
             _ => {
                 let e1_ = inline_ssei_applications(env, var_name, e1);
                 let e2_ = inline_ssei_applications(env, var_name, e2);
@@ -49,9 +49,9 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
         //
         // if the let simply binds our var_name to a new name, we can eliminate the
         // let and perform substitutions inside the body.
-        Let(nm, e, bd) if **e == Var(var_name.clone()) => {
-            inline_ssei_applications(env, var_name, &subst_var(nm, &Var(var_name.clone()), &bd))
-        }
+        // Let(nm, e, bd) if **e == Var(var_name.clone()) => {
+        //     inline_ssei_applications(env, var_name, &subst_var(nm, &Var(var_name.clone()), &bd))
+        // }
         Let(nm, e, bd) => {
             let e_ = inline_ssei_applications(env, var_name, e);
             let bd_ = inline_ssei_applications(env, var_name, bd);

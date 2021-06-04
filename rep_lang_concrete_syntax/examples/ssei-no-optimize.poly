@@ -8,6 +8,12 @@
     (let ([x (foldl + 0 xs)])
       (+ x x))))
 
+(defn verwat
+  (lam [xs]
+    (foldl + 0 ((lam [qq] qq)
+                xs))))
+
 (lam [zs]
   (+ (verapplam zs)
-     (verlet zs)))
+     (+ (verlet zs)
+        (verwat zs))))
