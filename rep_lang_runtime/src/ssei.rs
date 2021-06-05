@@ -18,7 +18,32 @@ pub fn is_ssei_able(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> bool {
 
 /// given an expr, perform beta reductions wherever possible.
 pub fn beta_reduce(body: &Expr) -> Expr {
-    todo!()
+    match body {
+        Lam(nm, bd) => Lam(nm.clone(), Box::new(beta_reduce(bd))),
+
+        App(e1, e2) => match &**e1 {
+            Lam(nm, bd) => beta_reduce(&subst_var(&nm, e2, &bd)),
+            _ => {
+                let e1_ = beta_reduce(e1);
+                let e2_ = beta_reduce(e2);
+                App(Box::new(e1_), Box::new(e2_))
+            }
+        },
+
+        Let(nm, e, bd) => {
+            let e_ = beta_reduce(e);
+            beta_reduce(&subst_var(nm, &e_, &bd))
+        }
+
+        If(tst, thn, els) => {
+            let tst_ = beta_reduce(tst);
+            let thn_ = beta_reduce(thn);
+            let els_ = beta_reduce(els);
+            If(Box::new(tst_), Box::new(thn_), Box::new(els_))
+        }
+
+        _ => body.clone(),
+    }
 }
 
 /// given a var_name, which corresponds to a closure argument name, and an expr
@@ -33,8 +58,6 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
                 let e1_ = inline_clo(var_name, env, clo_name);
                 inline_ssei_applications(env, var_name, &App(Box::new(e1_), e2.clone()))
             }
-            // TODO this is a potentially problematic optimization
-            // Lam(nm, bd) => inline_ssei_applications(env, var_name, &subst_var(&nm, e2, &bd)),
             _ => {
                 let e1_ = inline_ssei_applications(env, var_name, e1);
                 let e2_ = inline_ssei_applications(env, var_name, e2);
@@ -45,13 +68,11 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
             nm.clone(),
             Box::new(inline_ssei_applications(env, var_name, bd)),
         ),
-        // TODO this is a potentially problematic optimization
-        //
         // if the let simply binds our var_name to a new name, we can eliminate the
         // let and perform substitutions inside the body.
-        // Let(nm, e, bd) if **e == Var(var_name.clone()) => {
-        //     inline_ssei_applications(env, var_name, &subst_var(nm, &Var(var_name.clone()), &bd))
-        // }
+        Let(nm, e, bd) if **e == Var(var_name.clone()) => {
+            inline_ssei_applications(env, var_name, &subst_var(nm, &Var(var_name.clone()), &bd))
+        }
         Let(nm, e, bd) => {
             let e_ = inline_ssei_applications(env, var_name, e);
             let bd_ = inline_ssei_applications(env, var_name, bd);
