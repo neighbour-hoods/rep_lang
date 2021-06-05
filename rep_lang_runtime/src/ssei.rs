@@ -116,7 +116,7 @@ pub fn subst_var(name: &Name, binding: &Expr, expr: &Expr) -> Expr {
     }
 }
 
-// problem - how do we inline a closure? it can't contain any free variables...
+/// note: we can only inline closures which have no free variables
 pub fn inline_clo(var_name: &Name, env: &TermEnv, clo_name: &Name) -> Expr {
     match env.get(&clo_name) {
         Some(VClosure(nm_arg, bd, env_clo)) => {

@@ -9,4 +9,7 @@
         xs)
        (let ([ys xs]) (mean ys)))))
 
-checkLamLet
+(lam [xs]
+  (let ([ys xs])
+    ((lam [zs] (foldl + 0 zs))
+     ys)))

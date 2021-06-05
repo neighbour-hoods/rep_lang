@@ -1,0 +1,11 @@
+(defn one
+  (lam [xs]
+    (let ([folder (lam [acc x] (* acc x))])
+      (foldl folder 0 xs))))
+
+(defn two
+  (let ([folder (lam [acc x] (* acc x))])
+    (lam [xs]
+      (foldl folder 0 xs))))
+
+two
