@@ -10,7 +10,7 @@ use poly::{
     env::Env,
     eval::eval_defns,
     infer::infer_program,
-    ssei::{is_ssei_able, ssei},
+    ssei::{is_ssei_able, ssei_render},
 };
 
 fn main() -> std::io::Result<()> {
@@ -42,7 +42,7 @@ fn main() -> std::io::Result<()> {
                         );
                         println!(
                             "ssei: {}",
-                            ssei(&env, &mut es, &prog.p_body)
+                            ssei_render(&env, &mut es, &prog.p_body)
                                 .map_or("".into(), |expr| to_pretty(ppr_expr(&expr), width))
                         );
                         Ok(())

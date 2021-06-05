@@ -145,6 +145,13 @@ pub enum SseiResult {
     SseiClo(Value, Vec<(Name, Expr)>),
 }
 
+pub fn ssei_render(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Option<Expr> {
+    match eval_(env, es, expr) {
+        VClosure(nm, bd, env_clo) => Some(inline_ssei_applications(&env, &nm, &bd)),
+        _ => None,
+    }
+}
+
 pub fn ssei(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> SseiResult {
     match eval_(env, es, expr) {
         VClosure(nm, bd, env_clo) => {

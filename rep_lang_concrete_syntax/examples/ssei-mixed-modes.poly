@@ -1,0 +1,7 @@
+(defn coeffSum
+  (lam [coeff]
+    (lam [xs]
+      (* coeff
+         (foldl + 0 xs)))))
+
+coeffSum
