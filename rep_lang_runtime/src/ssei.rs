@@ -8,7 +8,6 @@ use rep_lang_core::{
     app, lam,
 };
 
-// BK
 pub fn is_ssei_able(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> bool {
     match eval_(env, es, expr) {
         VClosure(nm, bd, env_clo) => true,
@@ -58,6 +57,10 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
                 let e1_ = inline_clo(var_name, env, clo_name);
                 inline_ssei_applications(env, var_name, &App(Box::new(e1_), e2.clone()))
             }
+            // var de-aliasing: if our SSEI variable gets trivially renamed, de-alias it.
+            Lam(nm, bd) if **e2 == Var(var_name.clone()) => {
+                inline_ssei_applications(env, var_name, &subst_var(nm, &Var(var_name.clone()), &bd))
+            }
             _ => {
                 let e1_ = inline_ssei_applications(env, var_name, e1);
                 let e2_ = inline_ssei_applications(env, var_name, e2);
@@ -68,8 +71,7 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
             nm.clone(),
             Box::new(inline_ssei_applications(env, var_name, bd)),
         ),
-        // if the let simply binds our var_name to a new name, we can eliminate the
-        // let and perform substitutions inside the body.
+        // var de-aliasing: if our SSEI variable gets trivially renamed, de-alias it.
         Let(nm, e, bd) if **e == Var(var_name.clone()) => {
             inline_ssei_applications(env, var_name, &subst_var(nm, &Var(var_name.clone()), &bd))
         }
