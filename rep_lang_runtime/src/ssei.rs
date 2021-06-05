@@ -135,9 +135,29 @@ pub fn inline_clo(var_name: &Name, env: &TermEnv, clo_name: &Name) -> Expr {
     }
 }
 
-pub fn ssei(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Option<Expr> {
+pub fn fold_lifter(expr: &Expr, env: &TermEnv) -> (Expr, Vec<(Name, Expr)>) {
+    todo!()
+}
+
+pub enum SseiResult {
+    Atom(Value),
+    RegularClo(Value),
+    SseiClo(Value, Vec<(Name, Expr)>),
+}
+
+pub fn ssei(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> SseiResult {
     match eval_(env, es, expr) {
-        VClosure(nm, bd, env_clo) => Some(inline_ssei_applications(&env, &nm, &bd)),
-        _ => None,
+        VClosure(nm, bd, env_clo) => {
+            let inlined_bd = inline_ssei_applications(&env, &nm, &bd);
+            let (subbed_bd, sub_exprs) = fold_lifter(&inlined_bd, &env_clo);
+            if sub_exprs.is_empty() {
+                let clo = VClosure(nm.clone(), bd, env_clo);
+                SseiResult::RegularClo(clo)
+            } else {
+                let clo = VClosure(nm.clone(), Box::new(subbed_bd), env_clo);
+                SseiResult::SseiClo(clo, sub_exprs)
+            }
+        }
+        x => SseiResult::Atom(x),
     }
 }
