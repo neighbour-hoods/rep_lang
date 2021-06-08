@@ -1,16 +1,10 @@
 use crate::eval::{eval_, expr_free_vars, EvalState, TermEnv, Value, Value::*};
-use rep_lang_concrete_syntax::{
-    sp,
-    util::pretty::{parens, to_pretty},
-};
-use rep_lang_core::{
-    abstract_syntax::{primop_arity, Defn, Expr, Expr::*, Lit, Name, PrimOp, Program},
-    app, lam,
-};
+use rep_lang_concrete_syntax::util::pretty::to_pretty;
+use rep_lang_core::abstract_syntax::{Expr, Expr::*, Name};
 
 pub fn is_ssei_able(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> bool {
     match eval_(env, es, expr) {
-        VClosure(nm, bd, env_clo) => true,
+        VClosure(_nm, _bd, _env_clo) => true,
         _ => false,
     }
 }
@@ -51,7 +45,6 @@ pub fn beta_reduce(body: &Expr) -> Expr {
 /// fold.
 pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> Expr {
     match body {
-        Var(_) => body.clone(),
         App(e1, e2) => match &**e1 {
             Var(clo_name) if **e2 == Var(var_name.clone()) => {
                 let e1_ = inline_clo(var_name, env, clo_name);
@@ -80,14 +73,13 @@ pub fn inline_ssei_applications(env: &TermEnv, var_name: &Name, body: &Expr) -> 
             let bd_ = inline_ssei_applications(env, var_name, bd);
             Let(nm.clone(), Box::new(e_), Box::new(bd_))
         }
-        Lit(_) => body.clone(),
         If(tst, thn, els) => {
             let tst_ = inline_ssei_applications(env, var_name, tst);
             let thn_ = inline_ssei_applications(env, var_name, thn);
             let els_ = inline_ssei_applications(env, var_name, els);
             If(Box::new(tst_), Box::new(thn_), Box::new(els_))
         }
-        Prim(PrimOp) => body.clone(),
+        Var(_) | Prim(_) | Lit(_) => body.clone(),
     }
 }
 
@@ -119,7 +111,7 @@ pub fn subst_var(name: &Name, binding: &Expr, expr: &Expr) -> Expr {
 /// note: we can only inline closures which have no free variables
 pub fn inline_clo(var_name: &Name, env: &TermEnv, clo_name: &Name) -> Expr {
     match env.get(&clo_name) {
-        Some(VClosure(nm_arg, bd, env_clo)) => {
+        Some(VClosure(nm_arg, bd, _env_clo)) => {
             let free_vars = expr_free_vars(bd, vec![nm_arg.clone()].into_iter().collect());
             if free_vars.is_empty() {
                 subst_var(nm_arg, &Var(var_name.clone()), bd)
@@ -147,7 +139,7 @@ pub enum SseiResult {
 
 pub fn ssei_render(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Option<Expr> {
     match eval_(env, es, expr) {
-        VClosure(nm, bd, env_clo) => Some(inline_ssei_applications(&env, &nm, &bd)),
+        VClosure(nm, bd, _env_clo) => Some(inline_ssei_applications(&env, &nm, &bd)),
         _ => None,
     }
 }

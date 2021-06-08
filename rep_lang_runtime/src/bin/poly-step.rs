@@ -28,8 +28,8 @@ fn main() -> std::io::Result<()> {
             } else {
                 match infer_program(Env::new(), &prog) {
                     Ok((sc, env)) => {
-                        println!("{:?}\n\n{:?}\n", sc, env);
                         let ty = to_pretty(sc.ppr(), width);
+                        println!("ty: {}\n\nenv: {:?}\n", ty, env);
                         let (mut es, env) = eval_defns(&prog);
                         println!("es: {:?}", es);
                         for (k, v) in env.iter() {

@@ -334,7 +334,6 @@ pub fn expr_free_vars(expr: &Expr, mut bound: HashSet<Name>) -> Vec<Name> {
             v1.append(&mut v2);
             v1
         }
-        Expr::Lit(Lit) => vec![],
         Expr::If(tst, thn, els) => {
             let mut v1 = expr_free_vars(tst, bound.clone());
             let mut v2 = expr_free_vars(thn, bound.clone());
@@ -343,6 +342,6 @@ pub fn expr_free_vars(expr: &Expr, mut bound: HashSet<Name>) -> Vec<Name> {
             v1.append(&mut v3);
             v1
         }
-        Expr::Prim(PrimOp) => vec![],
+        Expr::Prim(_) | Expr::Lit(_) => vec![],
     }
 }
