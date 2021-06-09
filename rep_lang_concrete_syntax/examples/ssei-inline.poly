@@ -9,7 +9,10 @@
         xs)
        (let ([ys xs]) (mean ys)))))
 
-(lam [xs]
-  (let ([ys xs])
-    ((lam [zs] (foldl + 0 zs))
-     ys)))
+(defn noopt
+  (lam [xs]
+    (let ([ys xs])
+      ((lam [zs] (foldl + 0 zs))
+       ys))))
+
+mean

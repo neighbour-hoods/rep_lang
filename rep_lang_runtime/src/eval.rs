@@ -308,40 +308,37 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
     }
 }
 
-pub fn expr_free_vars(expr: &Expr, mut bound: HashSet<Name>) -> Vec<Name> {
+pub fn expr_free_vars(expr: &Expr, mut bound: HashSet<Name>) -> HashSet<Name> {
     match expr {
         Expr::Var(nm) => {
             if bound.contains(nm) {
-                vec![]
+                HashSet::new()
             } else {
-                vec![nm.clone()]
+                vec![nm.clone()].into_iter().collect()
             }
         }
         Expr::App(e1, e2) => {
-            let mut v1 = expr_free_vars(e1, bound.clone());
-            let mut v2 = expr_free_vars(e2, bound);
-            v1.append(&mut v2);
-            v1
+            let s1 = expr_free_vars(e1, bound.clone());
+            let s2 = expr_free_vars(e2, bound);
+            s1.union(&s2).cloned().collect()
         }
         Expr::Lam(nm, bd) => {
             bound.insert(nm.clone());
             expr_free_vars(bd, bound)
         }
         Expr::Let(nm, e, bd) => {
-            let mut v1 = expr_free_vars(e, bound.clone());
+            let s1 = expr_free_vars(e, bound.clone());
             bound.insert(nm.clone());
-            let mut v2 = expr_free_vars(bd, bound);
-            v1.append(&mut v2);
-            v1
+            let s2 = expr_free_vars(bd, bound);
+            s1.union(&s2).cloned().collect()
         }
         Expr::If(tst, thn, els) => {
-            let mut v1 = expr_free_vars(tst, bound.clone());
-            let mut v2 = expr_free_vars(thn, bound.clone());
-            let mut v3 = expr_free_vars(els, bound);
-            v1.append(&mut v2);
-            v1.append(&mut v3);
-            v1
+            let s1 = expr_free_vars(tst, bound.clone());
+            let s2 = expr_free_vars(thn, bound.clone());
+            let s3 = expr_free_vars(els, bound);
+            let u: HashSet<_> = s1.union(&s2).cloned().collect();
+            u.union(&s3).cloned().collect()
         }
-        Expr::Prim(_) | Expr::Lit(_) => vec![],
+        Expr::Prim(_) | Expr::Lit(_) => HashSet::new(),
     }
 }

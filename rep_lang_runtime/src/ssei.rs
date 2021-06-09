@@ -142,7 +142,9 @@ pub fn fold_lifter(
             if **arg == Var(var_name.clone()) && contains_fold(fun) {
                 // panic if there are free variables
                 let bound = env.keys().cloned().collect();
-                if !expr_free_vars(&expr, bound).is_empty() {
+                let mut free_vars = expr_free_vars(&expr, bound);
+                free_vars.remove(var_name);
+                if !free_vars.is_empty() {
                     panic!("fold contained free vars");
                 } else {
                     let bind_name = es.fresh();
@@ -186,8 +188,8 @@ pub fn fold_lifter(
 // this looks for a `Foldl` in the second-inner function position of 2 nested applications.
 fn contains_fold(expr: &Expr) -> bool {
     match expr {
-        App(fun1, arg1) => match &**fun1 {
-            App(fun2, arg2) => match **fun2 {
+        App(fun1, _arg1) => match &**fun1 {
+            App(fun2, _arg2) => match **fun2 {
                 Prim(PrimOp::Foldl) => true,
                 _ => false,
             },
@@ -203,9 +205,17 @@ pub enum SseiResult {
     SseiClo(Value, Vec<(Name, Expr)>),
 }
 
-pub fn ssei_render(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Option<Expr> {
+pub fn ssei_render(
+    env: &TermEnv,
+    es: &mut EvalState,
+    expr: &Expr,
+) -> Option<(Expr, Vec<(Name, Expr)>)> {
     match eval_(env, es, expr) {
-        VClosure(nm, bd, _env_clo) => Some(inline_ssei_applications(&env, &nm, &bd)),
+        VClosure(nm, bd, env_clo) => {
+            let inlined_bd = inline_ssei_applications(&env_clo, &nm, &bd);
+            let (body, lifted_folds) = fold_lifter(&env_clo, es, &nm, &inlined_bd);
+            Some((body, lifted_folds))
+        }
         _ => None,
     }
 }

@@ -4,7 +4,11 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 
-use rep_lang_concrete_syntax::{parse::program, pretty::ppr_expr, util::pretty::to_pretty};
+use rep_lang_concrete_syntax::{
+    parse::program,
+    pretty::{ppr_expr, ppr_name},
+    util::pretty::to_pretty,
+};
 
 use poly::{
     env::Env,
@@ -40,11 +44,19 @@ fn main() -> std::io::Result<()> {
                             "is_ssei_able: {}",
                             is_ssei_able(&env, &mut es, &prog.p_body)
                         );
-                        println!(
-                            "ssei: {}",
-                            ssei_render(&env, &mut es, &prog.p_body)
-                                .map_or("".into(), |expr| to_pretty(ppr_expr(&expr), width))
-                        );
+                        match ssei_render(&env, &mut es, &prog.p_body) {
+                            Some((body, lifted_folds)) => {
+                                println!("ssei: {}\n", to_pretty(ppr_expr(&body), width),);
+                                for (lf_nm, lf_bd) in lifted_folds {
+                                    println!(
+                                        "\t{} : {}\n",
+                                        to_pretty(ppr_name(&lf_nm), width),
+                                        to_pretty(ppr_expr(&lf_bd), width)
+                                    );
+                                }
+                            }
+                            None => (),
+                        }
                         Ok(())
                     }
                     Err(err) => panic!("type error: {:?}", err),
