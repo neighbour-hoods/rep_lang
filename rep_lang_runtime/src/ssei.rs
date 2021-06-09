@@ -1,6 +1,6 @@
 use crate::eval::{eval_, expr_free_vars, EvalState, TermEnv, Value, Value::*};
 use rep_lang_concrete_syntax::util::pretty::to_pretty;
-use rep_lang_core::abstract_syntax::{Expr, Expr::*, Name};
+use rep_lang_core::abstract_syntax::{Expr, Expr::*, Name, PrimOp};
 
 pub fn is_ssei_able(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> bool {
     match eval_(env, es, expr) {
@@ -127,8 +127,66 @@ pub fn inline_clo(var_name: &Name, env: &TermEnv, clo_name: &Name) -> Expr {
     }
 }
 
-pub fn fold_lifter(expr: &Expr, env: &TermEnv) -> (Expr, Vec<(Name, Expr)>) {
-    todo!()
+/// here we locate `Foldl`s which are applied to the stepped interpretation
+/// parameter (`var_name`) and lift them out of the expr, replacing them with
+/// a named variable. we the expression with the substituted vars, and the
+/// bindings between the vars and the lifted expressions.
+pub fn fold_lifter(
+    env: &TermEnv,
+    es: &mut EvalState,
+    var_name: &Name,
+    expr: &Expr,
+) -> (Expr, Vec<(Name, Expr)>) {
+    match &expr {
+        App(fun, arg) => {
+            if **arg == Var(var_name.clone()) && contains_fold(fun) {
+                todo!()
+            } else {
+                let (fun_expr, mut fun_vec) = fold_lifter(env, es, var_name, fun);
+                let (arg_expr, mut arg_vec) = fold_lifter(env, es, var_name, arg);
+                let ret_expr = App(Box::new(fun_expr), Box::new(arg_expr));
+                fun_vec.append(&mut arg_vec);
+                (ret_expr, fun_vec)
+            }
+        }
+        Lam(nm, bd) => {
+            let (bd_expr, bd_vec) = fold_lifter(env, es, var_name, bd);
+            let ret_expr = Lam(nm.clone(), Box::new(bd_expr));
+            (ret_expr, bd_vec)
+        }
+        Let(nm, e, bd) => {
+            let (e_expr, mut e_vec) = fold_lifter(env, es, var_name, e);
+            let (bd_expr, mut bd_vec) = fold_lifter(env, es, var_name, bd);
+            let ret_expr = Let(nm.clone(), Box::new(e_expr), Box::new(bd_expr));
+            e_vec.append(&mut bd_vec);
+            (ret_expr, e_vec)
+        }
+        If(tst, thn, els) => {
+            let (tst_expr, mut tst_vec) = fold_lifter(env, es, var_name, tst);
+            let (thn_expr, mut thn_vec) = fold_lifter(env, es, var_name, thn);
+            let (els_expr, mut els_vec) = fold_lifter(env, es, var_name, els);
+            let ret_expr = If(Box::new(tst_expr), Box::new(thn_expr), Box::new(els_expr));
+            tst_vec.append(&mut thn_vec);
+            tst_vec.append(&mut els_vec);
+            (ret_expr, tst_vec)
+        }
+
+        Var(_) | Prim(_) | Lit(_) => (expr.clone(), vec![]),
+    }
+}
+
+// this looks for a `Foldl` in the second-inner function position of 2 nested applications.
+fn contains_fold(expr: &Expr) -> bool {
+    match expr {
+        App(fun1, arg1) => match &**fun1 {
+            App(fun2, arg2) => match **fun2 {
+                Prim(PrimOp::Foldl) => true,
+                _ => false,
+            },
+            _ => false,
+        },
+        _ => false,
+    }
 }
 
 pub enum SseiResult {
@@ -148,7 +206,7 @@ pub fn ssei(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> SseiResult {
     match eval_(env, es, expr) {
         VClosure(nm, bd, env_clo) => {
             let inlined_bd = inline_ssei_applications(&env, &nm, &bd);
-            let (subbed_bd, sub_exprs) = fold_lifter(&inlined_bd, &env_clo);
+            let (subbed_bd, sub_exprs) = fold_lifter(&env_clo, es, &nm, &inlined_bd);
             if sub_exprs.is_empty() {
                 let clo = VClosure(nm.clone(), bd, env_clo);
                 SseiResult::RegularClo(clo)
