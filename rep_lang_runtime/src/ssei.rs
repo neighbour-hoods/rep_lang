@@ -140,7 +140,15 @@ pub fn fold_lifter(
     match &expr {
         App(fun, arg) => {
             if **arg == Var(var_name.clone()) && contains_fold(fun) {
-                todo!()
+                // panic if there are free variables
+                let bound = env.keys().cloned().collect();
+                if !expr_free_vars(&expr, bound).is_empty() {
+                    panic!("fold contained free vars");
+                } else {
+                    let bind_name = es.fresh();
+                    let bindings = vec![(bind_name.clone(), expr.clone())];
+                    (Var(bind_name), bindings)
+                }
             } else {
                 let (fun_expr, mut fun_vec) = fold_lifter(env, es, var_name, fun);
                 let (arg_expr, mut arg_vec) = fold_lifter(env, es, var_name, arg);
