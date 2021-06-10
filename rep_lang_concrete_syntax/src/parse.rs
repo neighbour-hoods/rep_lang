@@ -1,14 +1,17 @@
 use combine::error::{ParseError, StreamError};
 use combine::parser::char::{alpha_num, char, digit, letter, spaces, string};
-use combine::stream::{Stream, StreamErrorFor};
-use combine::{attempt, between, choice, many, many1, not_followed_by, optional, parser, Parser};
+use combine::stream::{position::SourcePosition, Stream, StreamErrorFor};
+use combine::{
+    attempt, between, choice, many, many1, not_followed_by, optional, parser, position, Parser,
+    Positioned,
+};
 
 use rep_lang_core::abstract_syntax::*;
 
 // `impl Parser` can be used to create reusable parsers with zero overhead
 pub fn expr_<Input>() -> impl Parser<Input, Output = Expr>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     // Necessary due to rust-lang/rust#24159
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
@@ -118,7 +121,7 @@ where
 // emulate `impl Parser`)
 parser! {
     pub fn expr[Input]()(Input) -> Expr
-    where [Input: Stream<Token = char>]
+    where [Input: Stream<Token = char, Position = SourcePosition>]
     {
         expr_()
     }
@@ -126,7 +129,7 @@ parser! {
 
 pub fn defn_<Input>() -> impl Parser<Input, Output = Defn>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     // Necessary due to rust-lang/rust#24159
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
@@ -137,7 +140,7 @@ where
 
 parser! {
     pub fn defn[Input]()(Input) -> Defn
-    where [Input: Stream<Token = char>]
+    where [Input: Stream<Token = char, Position = SourcePosition>]
     {
         defn_()
     }
@@ -145,7 +148,7 @@ parser! {
 
 parser! {
     pub fn defn_or_it_expr[Input]()(Input) -> Defn
-    where [Input: Stream<Token = char>]
+    where [Input: Stream<Token = char, Position = SourcePosition>]
     {
         choice(( attempt(defn()), expr().map(|e| Defn(Name("it".to_string()), e)) ))
     }
@@ -153,7 +156,7 @@ parser! {
 
 pub fn program_<Input>() -> impl Parser<Input, Output = Program>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     // Necessary due to rust-lang/rust#24159
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
@@ -165,7 +168,7 @@ where
 
 parser! {
     pub fn program[Input]()(Input) -> Program
-    where [Input: Stream<Token = char>]
+    where [Input: Stream<Token = char, Position = SourcePosition>]
     {
         program_()
     }
@@ -178,7 +181,7 @@ parser! {
 // Creates a parser which parses a char and skips any trailing whitespace
 fn lex_char<Input>(c: char) -> impl Parser<Input, Output = char>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
     char(c).skip(skip_spaces())
@@ -189,7 +192,7 @@ where
 // could have accepted additional whitespace between the tokens we also silence the error.
 fn skip_spaces<Input>() -> impl Parser<Input, Output = ()>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
     spaces().silent()
@@ -197,7 +200,7 @@ where
 
 fn word<Input>() -> impl Parser<Input, Output = String>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
     many1(letter()).skip(skip_spaces())
@@ -205,7 +208,7 @@ where
 
 fn integer<Input>() -> impl Parser<Input, Output = String>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
     many1(digit()).skip(skip_spaces())
@@ -213,7 +216,7 @@ where
 
 fn res_str<'a, Input>(x: &'static str) -> impl Parser<Input, Output = &'a str>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
     string(x)
@@ -233,14 +236,18 @@ pub fn reserved() -> Vec<String> {
 
 fn name<Input>() -> impl Parser<Input, Output = Name>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
+    Input: Positioned,
 {
-    word().and_then(move |s: String| {
+    (word(), position()).and_then(|t: (String, SourcePosition)| {
+        let s = t.0;
+        let pos = t.1;
         if reserved().contains(&s) {
-            Err(StreamErrorFor::<Input>::unexpected_static_message(
-                "reserved keyword",
-            ))
+            Err(StreamErrorFor::<Input>::unexpected_format(format!(
+                "reserved keyword: {} at location {}:{}",
+                s, pos.line, pos.column
+            )))
         } else {
             Ok(Name(s))
         }
@@ -249,7 +256,7 @@ where
 
 fn var<Input>() -> impl Parser<Input, Output = Expr>
 where
-    Input: Stream<Token = char>,
+    Input: Stream<Token = char, Position = SourcePosition>,
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
     name().map(Expr::Var)
