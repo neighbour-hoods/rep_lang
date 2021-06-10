@@ -198,7 +198,7 @@ where
     spaces().silent()
 }
 
-fn word<Input>() -> impl Parser<Input, Output = String>
+fn _word<Input>() -> impl Parser<Input, Output = String>
 where
     Input: Stream<Token = char, Position = SourcePosition>,
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
@@ -240,18 +240,24 @@ where
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
     Input: Positioned,
 {
-    (word(), position()).and_then(|t: (String, SourcePosition)| {
-        let s = t.0;
-        let pos = t.1;
-        if reserved().contains(&s) {
-            Err(StreamErrorFor::<Input>::unexpected_format(format!(
-                "reserved keyword: {} at location {}:{}",
-                s, pos.line, pos.column
-            )))
-        } else {
-            Ok(Name(s))
-        }
-    })
+    (
+        letter(),
+        many(choice((letter(), digit(), char('_'), char('-')))).skip(skip_spaces()),
+        position(),
+    )
+        .and_then(|t: (char, String, SourcePosition)| {
+            let mut s = t.1;
+            s.insert(0, t.0);
+            let pos = t.2;
+            if reserved().contains(&s) {
+                Err(StreamErrorFor::<Input>::unexpected_format(format!(
+                    "reserved keyword: {} at location {}:{}",
+                    s, pos.line, pos.column
+                )))
+            } else {
+                Ok(Name(s))
+            }
+        })
 }
 
 fn var<Input>() -> impl Parser<Input, Output = Expr>
