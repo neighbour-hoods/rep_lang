@@ -1,5 +1,4 @@
-use combine::parser::Parser;
-use combine::stream::easy;
+use combine::{stream::position, EasyParser, StreamOnce};
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -24,10 +23,10 @@ fn main() -> std::io::Result<()> {
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    match program().parse(easy::Stream(&contents[..])) {
-        Err(err) => panic!("parse error: {}", err),
+    match program().easy_parse(position::Stream::new(&contents[..])) {
+        Err(err) => panic!("parse error:\n\n{}\n", err),
         Ok((prog, extra_input)) => {
-            if extra_input != easy::Stream("") {
+            if extra_input.is_partial() {
                 panic!("error: unconsumed input: {:?}", extra_input);
             } else {
                 match infer_program(Env::new(), &prog) {
