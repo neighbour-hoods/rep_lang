@@ -1,12 +1,12 @@
 macro_rules! check_parse_expr {
     ( $a: expr, $b: expr ) => {
-        let result = expr().parse(easy::Stream($a));
+        let result = expr().easy_parse(position::Stream::new(&$a[..]));
         match result {
             Ok((v, stream)) => {
-                if stream == easy::Stream("") {
-                    assert_eq!(v, $b)
-                } else {
+                if stream.is_partial() {
                     assert!(false, "parse left unconsumed input")
+                } else {
+                    assert_eq!(v, $b)
                 }
             }
             Err(err) => assert!(
@@ -19,8 +19,7 @@ macro_rules! check_parse_expr {
 }
 
 pub mod parse_unit {
-    use combine::parser::Parser;
-    use combine::stream::easy;
+    use combine::{stream::position, EasyParser, StreamOnce};
 
     use rep_lang_core::abstract_syntax::{Lit, *};
 
@@ -181,8 +180,7 @@ pub mod parse_unit {
 }
 
 pub mod roundtrip {
-    use combine::parser::Parser;
-    use combine::stream::easy;
+    use combine::{stream::position, EasyParser, StreamOnce};
 
     use crate::{
         parse::*, pretty::ppr_expr, test_helpers::abstract_syntax::WrappedExpr, util::pretty::*,
@@ -192,9 +190,9 @@ pub mod roundtrip {
     fn parse_pretty_roundtrip(w_e: WrappedExpr) -> bool {
         let WrappedExpr(e) = w_e;
         let s = to_pretty(ppr_expr(&e), 80);
-        let res = expr().parse(easy::Stream(&s[..]));
+        let res = expr().easy_parse(position::Stream::new(&s[..]));
         match res {
-            Ok((_, stream)) if stream == easy::Stream("") => true,
+            Ok((_, stream)) if !stream.is_partial() => true,
             _ => false,
         }
     }

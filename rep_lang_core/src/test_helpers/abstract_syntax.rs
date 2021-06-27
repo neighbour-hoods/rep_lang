@@ -113,7 +113,9 @@ pub fn arbitrary_lit<G: Gen>(g: &mut G) -> Lit {
 pub fn arbitrary_name<G: Gen>(g: &mut G, reserved: &[String]) -> Name {
     let len = g.gen_range(3, 8);
     loop {
-        let s = iter::repeat(gen_alpha_char(g)).take(len).collect();
+        let s0 = gen_alpha_char(g);
+        let mut s: String = iter::repeat(gen_name(g)).take(len - 1).collect();
+        s.insert(0, s0);
         if !reserved.contains(&s) {
             return Name(s);
         }
@@ -145,10 +147,16 @@ impl Arbitrary for PrimOp {
     }
 }
 
-#[allow(dead_code)]
 fn gen_alpha_char<G: Gen>(g: &mut G) -> char {
-    const ALPHA_CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
+    const ALPHA_CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const RANGE: usize = ALPHA_CHARSET.len();
     let idx = g.gen_range(0, RANGE);
     ALPHA_CHARSET[idx as usize] as char
+}
+
+fn gen_name<G: Gen>(g: &mut G) -> char {
+    const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
+    const RANGE: usize = CHARSET.len();
+    let idx = g.gen_range(0, RANGE);
+    CHARSET[idx as usize] as char
 }
