@@ -1,0 +1,5 @@
+(defn a 0)
+
+(lam [xs]
+  (let ([a 1])
+    (foldl + a xs)))
