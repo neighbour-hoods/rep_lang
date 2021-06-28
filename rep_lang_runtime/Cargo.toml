@@ -8,7 +8,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-combine = "4.3.2"
+combine = "4.5.2"
 pretty = "0.10.0"
 rustyline = "6.3.0"
 rep_lang_core = { path = "../rep_lang_core" }

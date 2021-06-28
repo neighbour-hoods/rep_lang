@@ -1,5 +1,5 @@
 use combine::parser::Parser;
-use combine::stream::easy;
+use combine::stream::position;
 use std::collections::HashMap;
 
 use rep_lang_concrete_syntax::parse::program;
@@ -22,7 +22,7 @@ use super::{
 
 /// throws an error if the document doesn’t pass type checking
 pub fn parse_calculation(dsl_document: String) -> Result<abstract_syntax::Program, String> {
-    match program().parse(easy::Stream(&dsl_document[..])) {
+    match program().parse(position::Stream::new(&dsl_document[..])) {
         // TODO this is janky - perhaps we can just return the error?
         // https://docs.rs/combine/4.5.2/combine/trait.StreamOnce.html#associatedtype.Error
         Err(err) => Err(format!("parse error: {}", err)),

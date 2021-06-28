@@ -1,5 +1,4 @@
-use combine::parser::Parser;
-use combine::stream::easy;
+use combine::{stream::position, EasyParser, StreamOnce};
 use rustyline::{error::ReadlineError, Editor};
 use std::collections::HashMap;
 
@@ -37,10 +36,10 @@ fn main() {
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
-                match defn_or_it_expr().parse(easy::Stream(&line[..])) {
-                    Err(err) => println!("parse error: {}", err),
+                match defn_or_it_expr().easy_parse(position::Stream::new(&line[..])) {
+                    Err(err) => println!("parse error:\n\n{}\n", err),
                     Ok((Defn(nm, e), extra_input)) => {
-                        if extra_input != easy::Stream("") {
+                        if extra_input.is_partial() {
                             println!("error: unconsumed input: {:?}", extra_input);
                         } else {
                             println!("ast: {:?}\n", e);
