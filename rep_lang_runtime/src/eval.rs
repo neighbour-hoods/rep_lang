@@ -1,3 +1,4 @@
+use dyn_clone::{clone_trait_object, DynClone};
 use pretty::RcDoc;
 use std::{cmp::Ordering, collections::HashMap, iter};
 
@@ -7,12 +8,27 @@ use rep_lang_core::{
     app, lam,
 };
 
+// clonable iterator
+
+trait ClonableIterator: Iterator + DynClone {}
+
+impl<I: Iterator + DynClone> ClonableIterator for I {}
+
+clone_trait_object!(<T> ClonableIterator<Item = T>);
+
+#[derive(Clone)]
+struct UseClonableIterator<T> {
+    it: Box<dyn ClonableIterator<Item = T>>,
+}
+
+// core types
+
 #[derive(Clone)]
 pub enum Value {
     VInt(i64),
     VBool(bool),
     VClosure(Name, Box<Expr>, TermEnv),
-    VList(Vec<Value>),
+    VList(UseClonableIterator<Value>),
     VPair(Box<Value>, Box<Value>),
 }
 
