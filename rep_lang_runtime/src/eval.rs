@@ -1,6 +1,6 @@
 use dyn_clone::{clone_trait_object, DynClone};
 use pretty::RcDoc;
-use std::{cmp::Ordering, collections::HashMap, iter};
+use std::{cmp::Ordering, collections::HashMap, iter, iter::Peekable};
 
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 use rep_lang_core::{
@@ -18,7 +18,7 @@ clone_trait_object!(<T> ClonableIterator<Item = T>);
 
 #[derive(Clone)]
 struct UseClonableIterator<T> {
-    it: Box<dyn ClonableIterator<Item = T>>,
+    it: Peekable<Box<dyn ClonableIterator<Item = T>>>,
 }
 
 // core types
@@ -35,7 +35,7 @@ pub enum Value {
 type TermEnv = HashMap<Name, Value>;
 
 impl Value {
-    pub fn ppr(&self) -> RcDoc<()> {
+    pub fn ppr(&mut self) -> RcDoc<()> {
         match self {
             VInt(n) => RcDoc::as_string(n),
             VBool(true) => RcDoc::text("true"),
@@ -44,7 +44,7 @@ impl Value {
             VList(vec) => {
                 let header = iter::once(RcDoc::text("(list"));
                 let footer = RcDoc::text(")");
-                let middle = vec.iter().map(|x| x.ppr());
+                let middle = vec.it.map(|x| x.ppr());
                 RcDoc::intersperse(header.chain(middle), sp!()).append(footer)
             }
             VPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
@@ -77,30 +77,31 @@ impl Default for EvalState {
     }
 }
 
-pub fn eval_program(prog: &Program) -> (Value, TermEnv) {
+pub fn eval_program(prog: Program) -> (Value, TermEnv) {
     let mut env = HashMap::new();
     let mut es = EvalState::new();
     for Defn(nm, bd) in prog.p_defns.iter() {
-        let val = eval_(&env, &mut es, bd);
+        let bd_ = bd.clone();
+        let val = eval_(&env, &mut es, bd_);
         env.insert(nm.clone(), val);
     }
-    (eval_(&env, &mut es, &prog.p_body), env)
+    (eval_(&env, &mut es, prog.p_body), env)
 }
 
-pub fn eval(expr: &Expr) -> Value {
+pub fn eval(expr: Expr) -> Value {
     let env = HashMap::new();
     let mut es = EvalState::new();
     eval_(&env, &mut es, expr)
 }
 
 use Value::*;
-pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
-    match primop_apply_case(es, expr) {
+pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: Expr) -> Value {
+    match primop_apply_case(es, &expr) {
         // in this case we directly interpret the PrimOp.
         PrimOpApplyCase::FullyApplied(op, args) => {
             let args_v: Vec<Value> = args
                 .iter()
-                .map(|arg| eval_(env, es, &arg.clone()))
+                .map(|arg| eval_(env, es, arg.clone()))
                 .collect();
             match op {
                 PrimOp::Add => match (&args_v[0], &args_v[1]) {
@@ -124,7 +125,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                     _ => panic!("==: bad types"),
                 },
                 PrimOp::Null => match &args_v[0] {
-                    VList(vec) => VBool(vec.is_empty()),
+                    VList(ls) => VBool(ls.it.peek().is_none()),
                     _ => panic!("null: bad types"),
                 },
                 PrimOp::Map => match (&args_v[0], &args_v[1]) {
