@@ -1,6 +1,6 @@
 use dyn_clone::{clone_trait_object, DynClone};
 use pretty::RcDoc;
-use std::{cmp::Ordering, collections::HashMap, iter, iter::Peekable};
+use std::{cmp::Ordering, collections::HashMap, iter, iter::{Peekable, Map}};
 
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 use rep_lang_core::{
@@ -18,7 +18,14 @@ clone_trait_object!(<T> ClonableIterator<Item = T>);
 
 #[derive(Clone)]
 struct UseClonableIterator<T> {
-    it: Peekable<Box<dyn ClonableIterator<Item = T>>>,
+    it: Map<Peekable<Box<dyn ClonableIterator<Item = T>>>, dyn Fn() -> Value>,
+}
+
+#[macro_export]
+macro_rules! mk_uci {
+    ( $a: expr ) => {
+        UseClonableIterator { it: $a }
+    };
 }
 
 // core types
@@ -129,17 +136,25 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: Expr) -> Value {
                     _ => panic!("null: bad types"),
                 },
                 PrimOp::Map => match (&args_v[0], &args_v[1]) {
-                    (VClosure(nm, bd, clo), VList(vec)) => {
-                        let mut results = Vec::new();
-                        for arg_v in vec {
+                    (VClosure(nm, bd, clo), VList(ls)) => {
+                        Value::VList(mk_uci!(ls.it.into_iter().map(|arg_v| {
                             let mut new_env = clo.clone();
                             // TODO
                             // why is this clone necessary? \|/
                             // don't we have ownership?      |
                             new_env.insert(nm.clone(), arg_v.clone());
-                            results.push(eval_(&new_env, es, &bd));
-                        }
-                        Value::VList(results)
+                            eval_(&new_env, es, **bd)
+                        })))
+                        // let mut results = Vec::new();
+                        // for arg_v in vec {
+                        //     let mut new_env = clo.clone();
+                        //     // TODO
+                        //     // why is this clone necessary? \|/
+                        //     // don't we have ownership?      |
+                        //     new_env.insert(nm.clone(), arg_v.clone());
+                        //     results.push(eval_(&new_env, es, &bd));
+                        // }
+                        // Value::VList(results)
                     }
                     _ => panic!("map: bad types"),
                 },
