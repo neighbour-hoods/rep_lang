@@ -58,6 +58,13 @@ pub mod eval_unit {
                    (reverse (list 1 2 3 4)))"#,
             VList(vec![VInt(4), VInt(3), VInt(2), VInt(1)])
         ),
-        (ex5, "true", VBool(true))
+        (ex5, "true", VBool(true)),
+        (
+            ex6,
+            r#"(let ([pr (pair 1 2)]
+                     [f fst])
+                 (f pr))"#,
+            VInt(1)
+        ),
     ];
 }
