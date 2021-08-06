@@ -88,6 +88,6 @@ impl Deref for Env {
 
     fn deref(&self) -> &Self::Target {
         let Env(hm) = self;
-        &hm
+        hm
     }
 }

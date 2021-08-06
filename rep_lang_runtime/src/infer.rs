@@ -48,7 +48,7 @@ impl Type {
     pub fn apply(self, subst: &Subst) -> Type {
         match self {
             Type::TCon(a) => Type::TCon(a),
-            Type::TVar(ref a) => match subst.get(&a) {
+            Type::TVar(ref a) => match subst.get(a) {
                 None => self,
                 Some(x) => x.clone(),
             },
@@ -100,7 +100,7 @@ impl Scheme {
                 let subst2 = {
                     let mut subst_ = subst.clone();
                     for x in &xs {
-                        subst_.remove(&x);
+                        subst_.remove(x);
                     }
                     subst_
                 };
@@ -181,7 +181,7 @@ fn infer(
     match expr {
         Expr::Lit(lit) => Ok((infer_lit(lit), Vec::new())),
         Expr::Var(nm) => {
-            let ty = lookup_env(&env, is, &nm)?;
+            let ty = lookup_env(env, is, nm)?;
             Ok((ty, Vec::new()))
         }
         Expr::Lam(nm, bd) => {
@@ -244,7 +244,7 @@ pub fn infer_program_with_is(
     prog: &Program,
 ) -> Result<(Scheme, Env, InferState), TypeError> {
     for Defn(name, expr) in prog.p_defns.iter() {
-        let sc = infer_expr(&env, &expr)?;
+        let sc = infer_expr(&env, expr)?;
         env.extend(name.clone(), sc);
     }
     let (sc, is) = infer_expr_with_is(&env, &prog.p_body)?;
@@ -253,7 +253,7 @@ pub fn infer_program_with_is(
 
 pub fn infer_program(mut env: Env, prog: &Program) -> Result<(Scheme, Env), TypeError> {
     for Defn(name, expr) in prog.p_defns.iter() {
-        let sc = infer_expr(&env, &expr)?;
+        let sc = infer_expr(&env, expr)?;
         env.extend(name.clone(), sc);
     }
     let sc = infer_expr(&env, &prog.p_body)?;
@@ -404,7 +404,7 @@ fn bind(a: Tv, t: Type) -> Result<Subst, TypeError> {
 }
 
 fn occurs_check(a: &Tv, t: Type) -> bool {
-    t.ftv().contains(&a)
+    t.ftv().contains(a)
 }
 
 fn compose(mut s1: Subst, mut s2: Subst) -> Subst {
