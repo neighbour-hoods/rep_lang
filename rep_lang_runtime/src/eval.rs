@@ -218,6 +218,8 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
             //
             // note that we assume these are arity-2 PrimOps - an assumption
             // which likely will not hold in the future.
+            //
+            // WAT!!!! ^
             Expr::Prim(op) => {
                 let nm1 = es.fresh();
                 let nm2 = es.fresh();
