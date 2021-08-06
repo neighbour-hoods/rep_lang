@@ -7,13 +7,25 @@ use rep_lang_core::{
     app, lam,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Value {
     VInt(i64),
     VBool(bool),
     VClosure(Name, Box<Expr>, TermEnv),
     VList(Vec<Value>),
     VPair(Box<Value>, Box<Value>),
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (VInt(i1), VInt(i2)) => i1 == i2,
+            (VBool(b1), VBool(b2)) => b1 == b2,
+            (VList(l1), VList(l2)) => l1 == l2,
+            (VPair(x1, y1), VPair(x2, y2)) => x1 == x2 && y1 == y2,
+            (_, _) => false,
+        }
+    }
 }
 
 type TermEnv = HashMap<Name, Value>;
