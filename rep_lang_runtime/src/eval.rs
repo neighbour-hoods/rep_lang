@@ -216,19 +216,27 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
             // since it is then being used as an argument (or being bound), we
             // must package it into a closure so it can be used "lifted".
             //
-            // note that we assume these are arity-2 PrimOps - an assumption
-            // which likely will not hold in the future.
-            //
-            // WAT!!!! ^
+            // if it is a nullary primop, we do not need to wrap it in a
+            // closure, and we don't.
             Expr::Prim(op) => {
-                let nm1 = es.fresh();
-                let nm2 = es.fresh();
-                let bd = app!(
-                    app!(Expr::Prim(op.clone()), Expr::Var(nm1.clone())),
-                    Expr::Var(nm2.clone())
-                );
-                let inner = lam!(nm2, bd);
-                VClosure(nm1, Box::new(inner), HashMap::new())
+                let fresh_names: Vec<Name> = iter::repeat_with(|| es.fresh())
+                    .take(primop_arity(op))
+                    .collect();
+
+                // create the inner lambda body, successively apply `op` to
+                // each fresh name.
+                let apply_vars = |acc, nm: &Name| app!(acc, Expr::Var(nm.clone()));
+                let app_body = fresh_names.iter().fold(Expr::Prim(op.clone()), apply_vars);
+
+                // create the full lambda, successively wrapping a lambda which
+                // binds each fresh name.
+                let wrap_lambda = |acc, nm| lam!(nm, acc);
+                let full_lam = fresh_names.into_iter().rev().fold(app_body, wrap_lambda);
+
+                // cheeky shortcut to repackage lambda into a `VClosure`, so we
+                // can retain generality / avoid special-casing on the outermost
+                // lambda.
+                eval(&full_lam)
             }
 
             Expr::App(fun, arg) => match eval_(env, es, fun) {
