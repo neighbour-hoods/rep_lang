@@ -71,7 +71,7 @@ pub fn reduce_calculation(
 
     // match the arity of the program body with the # of `Value`s. if mismatch, throw error.
     let types::Scheme(_tvars, ty) = &prog_scheme;
-    let body_type_arguments = types::type_arguments(&ty);
+    let body_type_arguments = types::type_arguments(ty);
     let _ = {
         let body_arity = body_type_arguments.len();
         let values_arity = paired_name_vals.len();
@@ -88,7 +88,7 @@ pub fn reduce_calculation(
     // if arity matches, then check that the types unify.
     let values_types_result: Result<Vec<types::Type>, ValueInferenceError> = paired_name_vals
         .iter()
-        .map(|(_nm, val)| types_values::infer_value(is, &val))
+        .map(|(_nm, val)| types_values::infer_value(is, val))
         .collect();
     let values_types = values_types_result.map_err(|x| match x {
         ValueInferenceError::TyErr(te) => ReputationCalculationError::ValuesIterTypeError(te),

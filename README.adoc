@@ -14,12 +14,12 @@ with https://nixos.org/download.html[`nix`] installed:
 $ nix-shell
 
 # enter repl
-$ cargo run --bin polyi
+$ cargo run --bin rli
 < repl appears >
 < ctrl-d to exit >
 
 # interpret code from a file
-$ cargo run --bin poly ./rep_lang_concrete_syntax/examples/ex1.poly
+$ cargo run --bin rle ./rep_lang_concrete_syntax/examples/ex1.rl
 < output >
 ----
 

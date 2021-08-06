@@ -1,5 +1,5 @@
 [package]
-name = "poly"
+name = "rep_lang_runtime"
 version = "0.1.0"
 authors = ["Michael Hueschen <m@mhueschen.space>"]
 edition = "2018"
@@ -19,9 +19,9 @@ quickcheck = "0.9.2"
 quickcheck_macros = "0.9.1"
 
 [[bin]]
-name = "polyi"
-path = "src/bin/polyi.rs"
+name = "rli"
+path = "src/bin/rli.rs"
 
 [[bin]]
-name = "poly"
-path = "src/bin/poly.rs"
+name = "rle"
+path = "src/bin/rle.rs"

@@ -120,7 +120,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                             // why is this clone necessary? \|/
                             // don't we have ownership?      |
                             new_env.insert(nm.clone(), arg_v.clone());
-                            results.push(eval_(&new_env, es, &bd));
+                            results.push(eval_(&new_env, es, bd));
                         }
                         Value::VList(results)
                     }
@@ -131,7 +131,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                         let applicator = |acc: Value, arg_v: &Value| {
                             let mut new_env = clo.clone();
                             new_env.insert(nm.clone(), acc);
-                            match eval_(&new_env, es, &bd) {
+                            match eval_(&new_env, es, bd) {
                                 VClosure(nm2, bd2, clo2) => {
                                     let mut new_env2 = clo2;
                                     new_env2.insert(nm2, arg_v.clone());
@@ -175,7 +175,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
             Expr::Lit(Lit::LInt(x)) => VInt(*x),
             Expr::Lit(Lit::LBool(x)) => VBool(*x),
 
-            Expr::Var(x) => match env.get(&x) {
+            Expr::Var(x) => match env.get(x) {
                 None => panic!("impossible: free variable: {:?}", x),
                 Some(v) => v.clone(),
             },
