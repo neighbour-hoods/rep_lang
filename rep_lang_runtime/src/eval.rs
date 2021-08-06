@@ -101,10 +101,12 @@ pub fn eval(expr: &Expr) -> Value {
 }
 
 use Value::*;
+// this will have to change to `Thunk` ------------------------\/
 pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
     match primop_apply_case(es, expr) {
         // in this case we directly interpret the PrimOp.
         PrimOpApplyCase::FullyApplied(op, args) => {
+            // `actual_value` instead of `eval` for args
             let args_v: Vec<Value> = args
                 .iter()
                 .map(|arg| eval_(env, es, &arg.clone()))
@@ -174,6 +176,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                 eval_(&new_env, es, bd)
             }
 
+            // `actual_value` instead of `eval_` for `tst`
             Expr::If(tst, thn, els) => match eval_(env, es, tst) {
                 VBool(true) => eval_(env, es, thn),
                 VBool(false) => eval_(env, es, els),
@@ -212,8 +215,10 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                 eval(&full_lam)
             }
 
+            // `actual_value` instead of `eval_` for `fun`
             Expr::App(fun, arg) => match eval_(env, es, fun) {
                 VClosure(nm, bd, clo) => {
+                    // must `delay` `arg` -----\/
                     let arg_v = eval_(env, es, arg);
                     let mut new_env = clo;
                     new_env.insert(nm, arg_v);
