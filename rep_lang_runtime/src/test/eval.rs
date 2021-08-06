@@ -22,6 +22,17 @@ macro_rules! check_eval_expr {
     };
 }
 
+macro_rules! test_list {
+    ($( ($fn_name:ident, $str:expr, $expected_val:expr) ),+ $(,)?) => (
+        $(
+            #[test]
+            fn $fn_name() {
+                check_eval_expr!($str, $expected_val)
+            }
+        )*
+    );
+}
+
 pub mod eval_unit {
     use combine::{stream::position, EasyParser, StreamOnce};
 
@@ -32,43 +43,21 @@ pub mod eval_unit {
     };
     use rep_lang_concrete_syntax::parse::expr;
 
-    #[test]
-    fn ex0() {
-        check_eval_expr!("1", VInt(1))
-    }
-
-    #[test]
-    fn ex1() {
-        let expr = "(foldl + 0 (list 1 2 3))";
-        check_eval_expr!(expr, VInt(6))
-    }
-
-    #[test]
-    fn ex2() {
-        let expr = "(((lam [x] x) (lam [x] x)) 9)";
-        check_eval_expr!(expr, VInt(9))
-    }
-
-    #[test]
-    fn ex3() {
-        let expr = "((lam [x] (if x 2 7)) (== 1 2))";
-        check_eval_expr!(expr, VInt(7))
-    }
-
-    #[test]
-    fn ex4() {
-        let expr = r#"(let ([reverse
-                             (lam [ls]
-                               (let ([f (lam [acc x] (cons x acc))])
-                                 (foldl f nil ls)))
-                            ])
-                          (reverse (list 1 2 3 4)))"#;
-        let out = VList(vec![VInt(4), VInt(3), VInt(2), VInt(1)]);
-        check_eval_expr!(expr, out)
-    }
-
-    #[test]
-    fn ex5() {
-        check_eval_expr!("true", VBool(true))
-    }
+    test_list![
+        (ex0, "1", VInt(1)),
+        (ex1, "(foldl + 0 (list 1 2 3))", VInt(6)),
+        (ex2, "(((lam [x] x) (lam [x] x)) 9)", VInt(9)),
+        (ex3, "((lam [x] (if x 2 7)) (== 1 2))", VInt(7)),
+        (
+            ex4,
+            r#"(let ([reverse
+                      (lam [ls]
+                        (let ([f (lam [acc x] (cons x acc))])
+                          (foldl f nil ls)))
+                     ])
+                   (reverse (list 1 2 3 4)))"#,
+            VList(vec![VInt(4), VInt(3), VInt(2), VInt(1)])
+        ),
+        (ex5, "true", VBool(true))
+    ];
 }
