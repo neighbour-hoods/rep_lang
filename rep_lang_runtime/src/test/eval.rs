@@ -66,5 +66,14 @@ pub mod eval_unit {
                  (f pr))"#,
             VInt(1)
         ),
+        (
+            ex7,
+            r#"(let ([mean
+                      (lam [xs]
+                        (/ (foldl + 0 xs)
+                           (foldl (lam [acc x] (+ acc 1)) 0 xs)))])
+                 (mean (map (* 2) (list 1 2 3 4))))"#,
+            VInt(5)
+        ),
     ];
 }
