@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use rep_lang_concrete_syntax::{parse::defn_or_it_expr, util::pretty::to_pretty};
 use rep_lang_core::abstract_syntax::Defn;
 
-use poly::{
+use rep_lang_runtime::{
     env::*,
     eval::{eval_, EvalState},
     infer::*,

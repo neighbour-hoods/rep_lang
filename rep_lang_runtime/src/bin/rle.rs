@@ -5,7 +5,7 @@ use std::io::prelude::*;
 
 use rep_lang_concrete_syntax::{parse::program, util::pretty::to_pretty};
 
-use poly::{env::Env, eval::eval_program, infer::infer_program};
+use rep_lang_runtime::{env::Env, eval::eval_program, infer::infer_program};
 
 fn main() -> std::io::Result<()> {
     let width = 80;
