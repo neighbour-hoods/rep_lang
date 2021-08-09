@@ -52,7 +52,16 @@ pub mod eval_unit {
             ex4,
             r#"(let ([x (* 2 2)])
                  (cons x (cons 3 (cons 2 (cons 1 nil)))))"#,
-            VList(vec![VInt(4), VInt(3), VInt(2), VInt(1)])
+            VCons(
+                Box::new(VInt(4)),
+                Box::new(VCons(
+                    Box::new(VInt(3)),
+                    Box::new(VCons(
+                        Box::new(VInt(2)),
+                        Box::new(VCons(Box::new(VInt(1)), Box::new(VNil)))
+                    ))
+                ))
+            )
         ),
         (ex5, "true", VBool(true)),
         (

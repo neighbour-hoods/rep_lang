@@ -12,7 +12,8 @@ pub enum Value {
     VInt(i64),
     VBool(bool),
     VClosure(Name, Box<Expr>, TermEnv),
-    VList(Vec<Value>),
+    VCons(Box<Value>, Box<Value>),
+    VNil,
     VPair(Box<Value>, Box<Value>),
 }
 
@@ -21,7 +22,8 @@ impl PartialEq for Value {
         match (self, other) {
             (VInt(i1), VInt(i2)) => i1 == i2,
             (VBool(b1), VBool(b2)) => b1 == b2,
-            (VList(l1), VList(l2)) => l1 == l2,
+            (VCons(x1, l1), VCons(x2, l2)) => x1 == x2 && l1 == l2,
+            (VNil, VNil) => true,
             (VPair(x1, y1), VPair(x2, y2)) => x1 == x2 && y1 == y2,
             (_, _) => false,
         }
@@ -37,12 +39,14 @@ impl Value {
             VBool(true) => RcDoc::text("true"),
             VBool(false) => RcDoc::text("false"),
             VClosure(_, _, _) => RcDoc::text("<<closure>>"),
-            VList(vec) => {
-                let header = iter::once(RcDoc::text("(list"));
-                let footer = RcDoc::text(")");
-                let middle = vec.iter().map(|x| x.ppr());
-                RcDoc::intersperse(header.chain(middle), sp!()).append(footer)
-            }
+            VCons(hd, tl) => parens(
+                RcDoc::text("cons")
+                    .append(sp!())
+                    .append(hd.ppr())
+                    .append(sp!())
+                    .append(tl.ppr()),
+            ),
+            VNil => RcDoc::text("nil"),
             VPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
         }
     }
@@ -120,7 +124,8 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                     _ => panic!("==: bad types"),
                 },
                 PrimOp::Null => match &args_v[0] {
-                    VList(vec) => VBool(vec.is_empty()),
+                    VCons(_, _) => VBool(false),
+                    VNil => VBool(true),
                     _ => panic!("null: bad types"),
                 },
                 PrimOp::Pair => {
@@ -136,12 +141,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                     VPair(_, b) => *b.clone(),
                     _ => panic!("snd: bad types"),
                 },
-                PrimOp::Cons => match &args_v[1] {
-                    VList(vec) => {
-                        VList(iter::once(&args_v[0]).chain(vec.iter()).cloned().collect())
-                    }
-                    _ => panic!("cons: bad types"),
-                },
+                PrimOp::Cons => VCons(Box::new(args_v[0].clone()), Box::new(args_v[1].clone())),
                 PrimOp::Nil => panic!("nil: application of non-function"),
             }
         }
@@ -176,7 +176,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
             // we treat `Nil` here differently from the other `PrimOp`s,
             // interpreting it directly as a value (since it is not a function,
             // like all the other `PrimOp`s.
-            Expr::Prim(PrimOp::Nil) => VList(Vec::new()),
+            Expr::Prim(PrimOp::Nil) => VNil,
 
             // this represents a PrimOp that is not in application position.
             // since it is then being used as an argument (or being bound), we
