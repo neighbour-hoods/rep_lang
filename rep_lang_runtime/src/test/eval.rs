@@ -45,7 +45,7 @@ pub mod eval_unit {
 
     test_list![
         (ex0, "1", VInt(1)),
-        (ex1, "(/ (* (+ 0 1) 6) 3)", VInt(2)),
+        (ex1, "(- (/ (* (+ 0 1) 6) 3) 2)", VInt(0)),
         (ex2, "(((lam [x] x) (lam [x] x)) 9)", VInt(9)),
         (ex3, "((lam [x] (if x 2 7)) (== 1 2))", VInt(7)),
         (
@@ -67,9 +67,13 @@ pub mod eval_unit {
         (
             ex6,
             r#"(let ([pr (pair 1 2)]
-                     [f fst])
-                 (f pr))"#,
-            VInt(1)
+                     [f fst]
+                     [s snd])
+                 (+ (f pr)
+                    (s pr)))"#,
+            VInt(3)
         ),
+        (ex8, "(null nil)", VBool(true)),
+        (ex7, "(null (cons 1 nil))", VBool(false)),
     ];
 }
