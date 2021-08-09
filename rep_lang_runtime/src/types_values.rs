@@ -29,6 +29,11 @@ fn infer_value_internal(
             name.clone(),
             expr.clone(),
         )),
+
+        ////////////////////////////////////////////////////////////////////////
+        // VClosure: notes on a more full implementation:
+        ////////////////////////////////////////////////////////////////////////
+        //
         // VClosure(Name, Box<Expr>, TermEnv),
         // type TermEnv = HashMap<Name, Value>;
         //
@@ -46,17 +51,26 @@ fn infer_value_internal(
         // we may need to convert it to a Scheme kinda like so:
         // let tvars: Vec<types::TV> = free_type_vars(new_ty).collect();
         // Ok(types::Scheme(tvars, new_ty))
-        Value::VList(ls) => {
+        Value::VCons(hd, tl) => {
             let t_list = is.fresh();
             let t_element = is.fresh();
             let mut csts = Vec::new();
-            for element in ls {
-                let (elem_ty, mut elem_csts) = infer_value_internal(is, element)?;
-                csts.append(&mut elem_csts);
-                let cst = Constraint(elem_ty, t_element.clone());
-                csts.push(cst);
-            }
+
+            let (hd_ty, mut hd_csts) = infer_value_internal(is, hd)?;
+            csts.append(&mut hd_csts);
+            csts.push(Constraint(hd_ty, t_element.clone()));
             csts.push(Constraint(t_list.clone(), types::type_list(t_element)));
+
+            let (tl_ty, mut tl_csts) = infer_value_internal(is, tl)?;
+            csts.push(Constraint(t_list.clone(), tl_ty));
+            csts.append(&mut tl_csts);
+
+            Ok((t_list, csts))
+        }
+        Value::VNil => {
+            let t_list = is.fresh();
+            let t_element = is.fresh();
+            let csts = vec![Constraint(t_list.clone(), types::type_list(t_element))];
             Ok((t_list, csts))
         }
         Value::VPair(p1, p2) => {
