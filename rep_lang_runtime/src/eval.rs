@@ -7,20 +7,26 @@ use rep_lang_core::{
     app, lam,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Value {
     VInt(i64),
     VBool(bool),
     VClosure(Name, Box<Expr>, TermEnv),
-    VCons(Box<Value>, Box<Value>),
+    VCons(Box<Thunk>, Box<Thunk>),
     VNil,
-    VPair(Box<Value>, Box<Value>),
+    VPair(Box<Thunk>, Box<Thunk>),
+}
+
+enum Thunk {
+    UnevExpr(Box<Expr>, TermEnv),
+    UnevRust(Box<FnMut() -> Value>),
+    Ev(Value),
 }
 
 #[macro_export]
 macro_rules! vcons {
     ( $a: expr, $b: expr ) => {
-        Value::VCons(Box::new($a), Box::new($b))
+        Value::VCons(Box::new(Thunk::Ev($a)), Box::new(Thunk::Ev($b)))
     };
 }
 
