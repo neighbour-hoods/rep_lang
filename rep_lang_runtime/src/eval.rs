@@ -123,40 +123,6 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                     VList(vec) => VBool(vec.is_empty()),
                     _ => panic!("null: bad types"),
                 },
-                PrimOp::Map => match (&args_v[0], &args_v[1]) {
-                    (VClosure(nm, bd, clo), VList(vec)) => {
-                        let mut results = Vec::new();
-                        for arg_v in vec {
-                            let mut new_env = clo.clone();
-                            // TODO
-                            // why is this clone necessary? \|/
-                            // don't we have ownership?      |
-                            new_env.insert(nm.clone(), arg_v.clone());
-                            results.push(eval_(&new_env, es, bd));
-                        }
-                        Value::VList(results)
-                    }
-                    _ => panic!("map: bad types"),
-                },
-                PrimOp::Foldl => match (&args_v[0], &args_v[1], &args_v[2]) {
-                    (VClosure(nm, bd, clo), init, VList(vec)) => {
-                        let applicator = |acc: Value, arg_v: &Value| {
-                            let mut new_env = clo.clone();
-                            new_env.insert(nm.clone(), acc);
-                            match eval_(&new_env, es, bd) {
-                                VClosure(nm2, bd2, clo2) => {
-                                    let mut new_env2 = clo2;
-                                    new_env2.insert(nm2, arg_v.clone());
-                                    eval_(&new_env2, es, &bd2)
-                                }
-                                _ => panic!("foldl: bad types"),
-                            }
-                        };
-                        // TODO: why is this clone necessary?
-                        vec.iter().fold(init.clone(), applicator)
-                    }
-                    _ => panic!("foldl: bad types"),
-                },
                 PrimOp::Pair => {
                     let a = args_v[0].clone();
                     let b = args_v[1].clone();

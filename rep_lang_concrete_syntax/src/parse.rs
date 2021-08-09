@@ -37,8 +37,6 @@ where
         res_str("/").map(|_| PrimOp::Div),
         res_str("==").map(|_| PrimOp::Eql),
         attempt(res_str("null").map(|_| PrimOp::Null)),
-        res_str("map").map(|_| PrimOp::Map),
-        attempt(res_str("foldl").map(|_| PrimOp::Foldl)),
         res_str("pair").map(|_| PrimOp::Pair),
         res_str("fst").map(|_| PrimOp::Fst),
         res_str("snd").map(|_| PrimOp::Snd),
@@ -226,8 +224,8 @@ where
 
 pub fn reserved() -> Vec<String> {
     [
-        "let", "lam", "true", "false", "if", "null", "map", "foldl", "pair", "fst", "snd", "cons",
-        "defn", "list", "nil",
+        "let", "lam", "true", "false", "if", "null", "pair", "fst", "snd", "cons", "defn", "list",
+        "nil",
     ]
     .iter()
     .map(|x| x.to_string())

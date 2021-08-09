@@ -45,17 +45,13 @@ pub mod eval_unit {
 
     test_list![
         (ex0, "1", VInt(1)),
-        (ex1, "(foldl + 0 (list 1 2 3))", VInt(6)),
+        (ex1, "(/ (* (+ 0 1) 6) 3)", VInt(2)),
         (ex2, "(((lam [x] x) (lam [x] x)) 9)", VInt(9)),
         (ex3, "((lam [x] (if x 2 7)) (== 1 2))", VInt(7)),
         (
             ex4,
-            r#"(let ([reverse
-                      (lam [ls]
-                        (let ([f (lam [acc x] (cons x acc))])
-                          (foldl f nil ls)))
-                     ])
-                   (reverse (list 1 2 3 4)))"#,
+            r#"(let ([x (* 2 2)])
+                 (cons x (cons 3 (cons 2 (cons 1 nil)))))"#,
             VList(vec![VInt(4), VInt(3), VInt(2), VInt(1)])
         ),
         (ex5, "true", VBool(true)),

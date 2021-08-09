@@ -67,8 +67,6 @@ pub fn ppr_primop(op: &PrimOp) -> RcDoc<()> {
         Div => RcDoc::text("/"),
         Eql => RcDoc::text("=="),
         Null => RcDoc::text("null"),
-        Map => RcDoc::text("map"),
-        Foldl => RcDoc::text("foldl"),
         Pair => RcDoc::text("pair"),
         Fst => RcDoc::text("fst"),
         Snd => RcDoc::text("snd"),
