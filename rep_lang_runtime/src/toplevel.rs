@@ -13,8 +13,7 @@ use super::{
     env::Env,
     eval,
     infer::{infer_program, infer_program_with_is, unify_many, TypeError},
-    types, types_values,
-    types_values::ValueInferenceError,
+    types,
 };
 
 // META TODO:
@@ -86,16 +85,17 @@ pub fn reduce_calculation(
     }?;
 
     // if arity matches, then check that the types unify.
-    let values_types_result: Result<Vec<types::Type>, ValueInferenceError> = paired_name_vals
-        .iter()
-        .map(|(_nm, val)| types_values::infer_value(is, val))
-        .collect();
-    let values_types = values_types_result.map_err(|x| match x {
-        ValueInferenceError::TyErr(te) => ReputationCalculationError::ValuesIterTypeError(te),
-        ValueInferenceError::ClosureError(nm, bd) => {
-            ReputationCalculationError::ValuesIterPassedClosure(nm, bd)
-        }
-    })?;
+    // let values_types_result: Result<Vec<types::Type>, ValueInferenceError> = paired_name_vals
+    //     .iter()
+    //     .map(|(_nm, val)| types_values::infer_value(is, val))
+    //     .collect();
+    // let values_types = values_types_result.map_err(|x| match x {
+    //     ValueInferenceError::TyErr(te) => ReputationCalculationError::ValuesIterTypeError(te),
+    //     ValueInferenceError::ClosureError(nm, bd) => {
+    //         ReputationCalculationError::ValuesIterPassedClosure(nm, bd)
+    //     }
+    // })?;
+    let values_types = panic!("infer_value: not supported!");
     let subst = unify_many(values_types, body_type_arguments)
         .map_err(ReputationCalculationError::ProgramValuesUnificationError)?;
 
