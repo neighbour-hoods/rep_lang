@@ -17,6 +17,13 @@ pub enum Value {
     VPair(Box<Value>, Box<Value>),
 }
 
+#[macro_export]
+macro_rules! vcons {
+    ( $a: expr, $b: expr ) => {
+        Value::VCons(Box::new($a), Box::new($b))
+    };
+}
+
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
