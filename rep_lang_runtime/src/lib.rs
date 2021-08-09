@@ -10,6 +10,5 @@ pub mod eval;
 pub mod infer;
 pub mod toplevel;
 pub mod types;
-pub mod types_values;
 
 pub mod test;
