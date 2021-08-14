@@ -1,13 +1,12 @@
 use combine::{stream::position, EasyParser, StreamOnce};
 use rustyline::{error::ReadlineError, Editor};
-use std::collections::HashMap;
 
 use rep_lang_concrete_syntax::{parse::defn_or_it_expr, util::pretty::to_pretty};
 use rep_lang_core::abstract_syntax::Defn;
 
 use rep_lang_runtime::{
     env::*,
-    eval::{eval_, lookup_sto, ppr_value_ref, EvalState},
+    eval::{eval_, lookup_sto, new_term_env, ppr_value_ref, EvalState, Sto},
     infer::*,
 };
 
@@ -30,8 +29,8 @@ fn main() {
         Some(dims) => dims,
     };
     let mut type_env = Env::new();
-    let mut term_env = HashMap::new();
-    let mut sto = Vec::new();
+    let mut term_env = new_term_env();
+    let mut sto = Sto::new();
     let mut es = EvalState::new();
     loop {
         let readline = rl.readline("> ");

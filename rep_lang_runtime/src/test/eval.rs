@@ -9,7 +9,7 @@ macro_rules! check_eval_expr {
                 } else {
                     match infer_expr(&Env::new(), &expr) {
                         Ok(_sc) => {
-                            let mut sto = Vec::new();
+                            let mut sto = Sto::new();
                             let actual_ref = eval(&mut sto, &expr);
                             let actual_val = lookup_sto(&actual_ref, &sto);
                             let actual_flat_val = value_to_flat_value(actual_val, &sto);
@@ -44,10 +44,11 @@ pub mod eval_unit {
 
     use crate::{
         env::*,
-        eval::{eval, lookup_sto, value_to_flat_value, FlatValue, Value, Value::*},
+        eval::{eval, lookup_sto, value_to_flat_value, FlatValue, Sto, Value, Value::*},
         infer::*,
         vcons,
     };
+    use rep_lang_concrete_syntax::parse::expr;
 
     test_list![
         (ex0, "1", FlatValue(VInt(1))),

@@ -1,5 +1,9 @@
 use pretty::RcDoc;
-use std::{cmp::Ordering, collections::HashMap, iter};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, HashMap},
+    iter,
+};
 
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 use rep_lang_core::{
@@ -7,10 +11,10 @@ use rep_lang_core::{
     app, lam,
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct VRef(usize);
 
-#[derive(Debug)]
+#[derive(Debug, Eq, Hash)]
 pub enum Value<R> {
     VInt(i64),
     VBool(bool),
@@ -43,24 +47,46 @@ impl<R: PartialEq> PartialEq for Value<R> {
     }
 }
 
-type TermEnv = HashMap<Name, VRef>;
+type TermEnv = BTreeMap<Name, VRef>;
 
-// this could also be implemented as a HashMap, in order to avoid duplicate `Value<VRef>`s being
-// entered into the Sto.
-type Sto = Vec<Value<VRef>>;
+pub fn new_term_env() -> TermEnv {
+    BTreeMap::new()
+}
+
+#[derive(Debug)]
+pub struct Sto {
+    pub sto_vec: Vec<Value<VRef>>,
+    pub sto_ev_map: HashMap<Value<VRef>, usize>,
+    // for later - lazy
+    // pub sto_unev_map: HashMap<(Expr, TermEnv), usize>,
+}
+
+impl Sto {
+    pub fn new() -> Sto {
+        Sto {
+            sto_vec: Vec::new(),
+            sto_ev_map: HashMap::new(),
+        }
+    }
+}
 
 pub fn lookup_sto<'a>(vr: &VRef, sto: &'a Sto) -> &'a Value<VRef> {
     let VRef(idx) = *vr;
-    match sto.get(idx) {
+    match sto.sto_vec.get(idx) {
         Some(val) => val,
         None => panic!("lookup_sto: out of bounds"),
     }
 }
 
 pub fn add_to_sto(val: Value<VRef>, sto: &mut Sto) -> VRef {
-    let idx = sto.len();
-    sto.push(val);
-    VRef(idx)
+    match sto.sto_ev_map.get(&val) {
+        None => {
+            let idx = sto.sto_vec.len();
+            sto.sto_vec.push(val);
+            VRef(idx)
+        }
+        Some(idx) => VRef(*idx),
+    }
 }
 
 pub fn value_to_flat_value(val: &Value<VRef>, sto: &Sto) -> FlatValue {
@@ -134,9 +160,9 @@ impl Default for EvalState {
 }
 
 pub fn eval_program(prog: &Program) -> (VRef, TermEnv, Sto) {
-    let mut env = HashMap::new();
+    let mut env = new_term_env();
     let mut es = EvalState::new();
-    let mut sto = Vec::new();
+    let mut sto = Sto::new();
     for Defn(nm, bd) in prog.p_defns.iter() {
         let val = eval_(&env, &mut sto, &mut es, bd);
         env.insert(nm.clone(), val);
@@ -145,7 +171,7 @@ pub fn eval_program(prog: &Program) -> (VRef, TermEnv, Sto) {
 }
 
 pub fn eval(sto: &mut Sto, expr: &Expr) -> VRef {
-    let env = HashMap::new();
+    let env = new_term_env();
     let mut es = EvalState::new();
     eval_(&env, sto, &mut es, expr)
 }
@@ -261,9 +287,7 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
             Expr::Prim(op) => {
                 let arity = primop_arity(op);
                 assert_ne!(arity, 0, "unhandled nullary primop");
-                let fresh_names: Vec<Name> = iter::repeat_with(|| es.fresh())
-                    .take(arity)
-                    .collect();
+                let fresh_names: Vec<Name> = iter::repeat_with(|| es.fresh()).take(arity).collect();
 
                 // create the inner lambda body, successively apply `op` to
                 // each fresh name.
