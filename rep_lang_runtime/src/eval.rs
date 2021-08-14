@@ -183,6 +183,9 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                     }
                     _ => panic!("==: bad types"),
                 },
+                // TODO: example of a place where we might want a HashMap impl for
+                // Sto - to avoid duplicate allocations. there should only be 2 Bool
+                // values allocated - for true & false.
                 PrimOp::Null => {
                     let val = match lookup_sto(&args_v[0], sto) {
                         VCons(_, _) => VBool(false),
@@ -195,8 +198,6 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                     let val = VPair(args_v[0], args_v[1]);
                     add_to_sto(val, sto)
                 }
-                // example of a place where we might want a HashMap impl for Sto - to avoid
-                // duplicated allocations.
                 PrimOp::Fst => match lookup_sto(&args_v[0], sto) {
                     VPair(a, _) => *a,
                     _ => panic!("fst: bad types"),
@@ -246,6 +247,9 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
             // we treat `Nil` here differently from the other `PrimOp`s,
             // interpreting it directly as a value (since it is not a function,
             // like all the other `PrimOp`s.
+            //
+            // TODO: example of a place where we might want a HashMap impl for
+            // Sto - to avoid duplicate allocations.
             Expr::Prim(PrimOp::Nil) => add_to_sto(VNil, sto),
 
             // this represents a PrimOp that is not in application position.
@@ -255,8 +259,10 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
             // if it is a nullary primop, we do not need to wrap it in a
             // closure, and we don't.
             Expr::Prim(op) => {
+                let arity = primop_arity(op);
+                assert_ne!(arity, 0, "unhandled nullary primop");
                 let fresh_names: Vec<Name> = iter::repeat_with(|| es.fresh())
-                    .take(primop_arity(op))
+                    .take(arity)
                     .collect();
 
                 // create the inner lambda body, successively apply `op` to
