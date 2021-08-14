@@ -1,3 +1,4 @@
+#[cfg(test)]
 macro_rules! check_eval_expr {
     ( $str: expr, $expected_val: expr ) => {
         match expr().easy_parse(position::Stream::new(&$str[..])) {
@@ -22,6 +23,7 @@ macro_rules! check_eval_expr {
     };
 }
 
+#[cfg(test)]
 macro_rules! test_list {
     ($( ($fn_name:ident, $str:expr, $expected_val:expr) ),+ $(,)?) => (
         $(
@@ -33,6 +35,7 @@ macro_rules! test_list {
     );
 }
 
+#[cfg(test)]
 pub mod eval_unit {
     use combine::{stream::position, EasyParser, StreamOnce};
 
