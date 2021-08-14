@@ -48,7 +48,6 @@ pub mod eval_unit {
         infer::*,
         vcons,
     };
-    use rep_lang_concrete_syntax::parse::expr;
 
     test_list![
         (ex0, "1", FlatValue(VInt(1))),

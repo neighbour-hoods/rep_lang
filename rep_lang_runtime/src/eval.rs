@@ -89,8 +89,8 @@ pub fn ppr_value_ref<'a>(val: &'a Value<VRef>, sto: &'a Sto) -> RcDoc<'a, ()> {
         VBool(false) => RcDoc::text("false"),
         VClosure(_, _, _) => RcDoc::text("<<closure>>"),
         VCons(hd, tl) => {
-            let hd_ppr = ppr_value_ref(lookup_sto(&hd, sto), sto);
-            let tl_ppr = ppr_value_ref(lookup_sto(&tl, sto), sto);
+            let hd_ppr = ppr_value_ref(lookup_sto(hd, sto), sto);
+            let tl_ppr = ppr_value_ref(lookup_sto(tl, sto), sto);
             parens(
                 RcDoc::text("cons")
                     .append(sp!())
@@ -101,8 +101,8 @@ pub fn ppr_value_ref<'a>(val: &'a Value<VRef>, sto: &'a Sto) -> RcDoc<'a, ()> {
         }
         VNil => RcDoc::text("nil"),
         VPair(a, b) => {
-            let a_ppr = ppr_value_ref(lookup_sto(&a, sto), sto);
-            let b_ppr = ppr_value_ref(lookup_sto(&b, sto), sto);
+            let a_ppr = ppr_value_ref(lookup_sto(a, sto), sto);
+            let b_ppr = ppr_value_ref(lookup_sto(b, sto), sto);
             parens(a_ppr.append(RcDoc::text(", ")).append(b_ppr))
         }
     }
@@ -198,11 +198,11 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                 // example of a place where we might want a HashMap impl for Sto - to avoid
                 // duplicated allocations.
                 PrimOp::Fst => match lookup_sto(&args_v[0], sto) {
-                    VPair(a, _) => a.clone(),
+                    VPair(a, _) => *a,
                     _ => panic!("fst: bad types"),
                 },
                 PrimOp::Snd => match lookup_sto(&args_v[0], sto) {
-                    VPair(_, b) => b.clone(),
+                    VPair(_, b) => *b,
                     _ => panic!("snd: bad types"),
                 },
                 PrimOp::Cons => {
