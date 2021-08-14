@@ -64,32 +64,49 @@ pub fn add_to_sto(val: Value<VRef>, sto: &mut Sto) -> VRef {
 }
 
 pub fn value_to_flat_value(val: &Value<VRef>, sto: &Sto) -> FlatValue {
-    todo!()
+    match val {
+        VInt(x) => FlatValue(VInt(*x)),
+        VBool(x) => FlatValue(VBool(*x)),
+        VClosure(nm, bd, env) => FlatValue(VClosure(nm.clone(), bd.clone(), env.clone())),
+        VCons(hd, tl) => {
+            let hd_ = value_to_flat_value(lookup_sto(hd, sto), sto);
+            let tl_ = value_to_flat_value(lookup_sto(tl, sto), sto);
+            FlatValue(VCons(Box::new(hd_), Box::new(tl_)))
+        }
+        VNil => FlatValue(VNil),
+        VPair(x, y) => {
+            let x_ = value_to_flat_value(lookup_sto(x, sto), sto);
+            let y_ = value_to_flat_value(lookup_sto(y, sto), sto);
+            FlatValue(VPair(Box::new(x_), Box::new(y_)))
+        }
+    }
 }
 
-pub fn ppr_value_ref<'a>(val: &'a Value<VRef>, sto: &Sto) -> RcDoc<'a, ()> {
-    todo!()
+pub fn ppr_value_ref<'a>(val: &'a Value<VRef>, sto: &'a Sto) -> RcDoc<'a, ()> {
+    match val {
+        VInt(n) => RcDoc::as_string(n),
+        VBool(true) => RcDoc::text("true"),
+        VBool(false) => RcDoc::text("false"),
+        VClosure(_, _, _) => RcDoc::text("<<closure>>"),
+        VCons(hd, tl) => {
+            let hd_ppr = ppr_value_ref(lookup_sto(&hd, sto), sto);
+            let tl_ppr = ppr_value_ref(lookup_sto(&tl, sto), sto);
+            parens(
+                RcDoc::text("cons")
+                    .append(sp!())
+                    .append(hd_ppr)
+                    .append(sp!())
+                    .append(tl_ppr),
+            )
+        }
+        VNil => RcDoc::text("nil"),
+        VPair(a, b) => {
+            let a_ppr = ppr_value_ref(lookup_sto(&a, sto), sto);
+            let b_ppr = ppr_value_ref(lookup_sto(&b, sto), sto);
+            parens(a_ppr.append(RcDoc::text(", ")).append(b_ppr))
+        }
+    }
 }
-
-// impl Value {
-//     pub fn ppr(&self) -> RcDoc<()> {
-//         match self {
-//             VInt(n) => RcDoc::as_string(n),
-//             VBool(true) => RcDoc::text("true"),
-//             VBool(false) => RcDoc::text("false"),
-//             VClosure(_, _, _) => RcDoc::text("<<closure>>"),
-//             VCons(hd, tl) => parens(
-//                 RcDoc::text("cons")
-//                     .append(sp!())
-//                     .append(hd.ppr())
-//                     .append(sp!())
-//                     .append(tl.ppr()),
-//             ),
-//             VNil => RcDoc::text("nil"),
-//             VPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
-//         }
-//     }
-// }
 
 pub struct EvalState(u64);
 
