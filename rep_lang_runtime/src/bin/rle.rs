@@ -32,6 +32,7 @@ fn main() -> std::io::Result<()> {
                         let (vr, _env, sto) = eval_program(&prog);
                         let val = lookup_sto(&vr, &sto);
                         let val_str = to_pretty(ppr_value_ref(val, &sto), width);
+                        println!("sto: {:?}\nsto len: {}\n", sto.sto_vec, sto.sto_vec.len());
                         println!("(: {}\n   {}\n)", val_str, ty);
                         Ok(())
                     }
