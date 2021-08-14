@@ -9,6 +9,7 @@ use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 use rep_lang_core::{
     abstract_syntax::{primop_arity, Defn, Expr, Lit, Name, PrimOp, Program},
     app, lam,
+    util::calculate_hash,
 };
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -56,7 +57,9 @@ pub fn new_term_env() -> TermEnv {
 #[derive(Debug)]
 pub struct Sto {
     pub sto_vec: Vec<Value<VRef>>,
-    pub sto_ev_map: HashMap<Value<VRef>, usize>,
+    // instead of using `Value<VRef>` as keys (which would store the whole value
+    // in the HashMap), we only store a hash as key.
+    pub sto_ev_map: HashMap<u64, usize>,
     // for later - lazy
     // pub sto_unev_map: HashMap<(Expr, TermEnv), usize>,
 }
@@ -79,16 +82,12 @@ pub fn lookup_sto<'a>(vr: &VRef, sto: &'a Sto) -> &'a Value<VRef> {
 }
 
 pub fn add_to_sto(val: Value<VRef>, sto: &mut Sto) -> VRef {
-    match sto.sto_ev_map.get(&val) {
+    let hash = calculate_hash(&val);
+    match sto.sto_ev_map.get(&hash) {
         None => {
             let idx = sto.sto_vec.len();
             sto.sto_vec.push(val);
-            // // note that this would be technically correct (prior to this
-            // // patch, `sto_ev_map` was never inserted into, and therefore was
-            // // empty, and useless), however due to our refusal to implement
-            // // `Clone` on `Value`, we cannot implement this:
-            //
-            // sto.sto_ev_map.insert(val.clone(), idx);
+            sto.sto_ev_map.insert(hash, idx);
             VRef(idx)
         }
         Some(idx) => VRef(*idx),
