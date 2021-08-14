@@ -83,6 +83,12 @@ pub fn add_to_sto(val: Value<VRef>, sto: &mut Sto) -> VRef {
         None => {
             let idx = sto.sto_vec.len();
             sto.sto_vec.push(val);
+            // // note that this would be technically correct (prior to this
+            // // patch, `sto_ev_map` was never inserted into, and therefore was
+            // // empty, and useless), however due to our refusal to implement
+            // // `Clone` on `Value`, we cannot implement this:
+            //
+            // sto.sto_ev_map.insert(val.clone(), idx);
             VRef(idx)
         }
         Some(idx) => VRef(*idx),
