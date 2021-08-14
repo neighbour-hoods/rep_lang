@@ -7,7 +7,7 @@ use rep_lang_core::abstract_syntax::Defn;
 
 use rep_lang_runtime::{
     env::*,
-    eval::{eval_, EvalState},
+    eval::{eval_, lookup_sto, ppr_value_ref, EvalState},
     infer::*,
 };
 
@@ -31,6 +31,7 @@ fn main() {
     };
     let mut type_env = Env::new();
     let mut term_env = HashMap::new();
+    let mut sto = Vec::new();
     let mut es = EvalState::new();
     loop {
         let readline = rl.readline("> ");
@@ -49,9 +50,10 @@ fn main() {
                                 Ok(sc) => {
                                     let ty = to_pretty(sc.ppr(), width);
                                     type_env.extend(nm.clone(), sc);
-                                    let val = eval_(&term_env, &mut es, &e);
-                                    let val_str = to_pretty(val.ppr(), width);
-                                    term_env.insert(nm, val);
+                                    let vr = eval_(&term_env, &mut sto, &mut es, &e);
+                                    let val = lookup_sto(&vr, &sto);
+                                    let val_str = to_pretty(ppr_value_ref(val, &sto), width);
+                                    term_env.insert(nm, vr);
                                     println!("(: {}\n   {}\n)", val_str, ty);
                                 }
                             }
