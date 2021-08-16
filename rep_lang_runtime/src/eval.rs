@@ -2,6 +2,7 @@ use pretty::RcDoc;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
+    fmt,
     iter,
 };
 
@@ -11,6 +12,9 @@ use rep_lang_core::{
     app, lam,
     util::calculate_hash,
 };
+
+use Thunk::*;
+use Value::*;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct VRef(usize);
@@ -25,17 +29,23 @@ pub enum Value<R> {
     VPair(R, R),
 }
 
-// TODO add thunk type
+enum Thunk<R> {
+    UnevExpr(Expr, TermEnv),
+    UnevRust(Box<dyn FnMut() -> FlatValue>),
+    Ev(Value<R>),
+}
 
-// TODO this must wrap Thunk
+pub fn force_it(thnk: &mut Thunk<VRef>) -> &Value<VRef> {
+    todo!()
+}
+
 #[derive(Debug, PartialEq)]
-pub struct FlatValue(pub Value<Box<FlatValue>>);
+pub struct FlatValue(pub Value<Box<Thunk<FlatValue>>>);
 
-// TODO modify this to mirror `FlatValue` changes
 #[macro_export]
 macro_rules! vcons {
     ( $a: expr, $b: expr ) => {
-        FlatValue(Value::VCons(Box::new($a), Box::new($b)))
+        FlatValue(Value::VCons(Box::new(Thunk::Ev($a)), Box::new(Thunk::Ev($b))))
     };
 }
 
@@ -52,6 +62,30 @@ impl<R: PartialEq> PartialEq for Value<R> {
     }
 }
 
+impl<R: PartialEq> PartialEq for Thunk<R> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Ev(x1), Ev(x2)) => x1 == x2,
+            _ => false,
+        }
+    }
+}
+
+impl<R: fmt::Debug> fmt::Debug for Thunk<R> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Ev(val) => val.fmt(f),
+            UnevExpr(expr, env) => {
+                f.debug_struct("UnevExpr")
+                 .field("expr", &expr)
+                 .field("env", &env)
+                 .finish()
+            },
+            UnevRust(_) => f.write_str("UnevRust <<closure>>"),
+        }
+    }
+}
+
 type TermEnv = BTreeMap<Name, VRef>;
 
 pub fn new_term_env() -> TermEnv {
@@ -60,14 +94,22 @@ pub fn new_term_env() -> TermEnv {
 
 #[derive(Debug)]
 pub struct Sto {
-    // TODO change this to Thunk<VRef>
-    //               |
-    pub sto_vec: Vec<Value<VRef>>,
-    // instead of using `Value<VRef>` as keys (which would store the whole value
-    // in the HashMap), we only store a hash as key.
+
+    // "heap" of addressed thunks
+    pub sto_vec: Vec<Thunk<VRef>>,
+
+    // map from evaluated `Value` to index in `sto_vec`.
+    //
+    // keys here are hashes of `Value<VRef>`.
+    // not storing the full value saves space.
     pub sto_ev_map: HashMap<u64, usize>,
-    // for later - lazy
-    // pub sto_unev_map: HashMap<(Expr, TermEnv), usize>,
+
+    // map from unevaluated expressions (and their requisite environment) to
+    // index in `sto_vec`.
+    //
+    // keys here are hashes of `(Expr, TermEnv)`.
+    // not storing the full values saves space.
+    pub sto_unev_map: HashMap<u64, usize>,
 }
 
 impl Sto {
@@ -75,22 +117,21 @@ impl Sto {
         Sto {
             sto_vec: Vec::new(),
             sto_ev_map: HashMap::new(),
+            sto_unev_map: HashMap::new(),
         }
     }
 }
 
-// TODO decide if this should return a `Value` (thereby forcing the thunk at
-// the provided index), or a `Thunk` (which could still be unevaluated).
-//
-// `Value` is probably the right decision.
 pub fn lookup_sto<'a>(vr: &VRef, sto: &'a Sto) -> &'a Value<VRef> {
     let VRef(idx) = *vr;
-    match sto.sto_vec.get(idx) {
-        Some(val) => val,
+    match sto.sto_vec.get_mut(idx) {
+        Some(thnk) => force_it(thnk),
         None => panic!("lookup_sto: out of bounds"),
     }
 }
 
+// TODO this is a call site where many critical points pass through. need to
+// review what should be un/evaluated.
 pub fn add_to_sto(val: Value<VRef>, sto: &mut Sto) -> VRef {
     let hash = calculate_hash(&val);
     match sto.sto_ev_map.get(&hash) {
@@ -203,7 +244,6 @@ macro_rules! primop_binop_int {
     };
 }
 
-use Value::*;
 pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> VRef {
     match primop_apply_case(es, expr) {
         // in this case we directly interpret the PrimOp.
