@@ -6,7 +6,7 @@ this repository consists of 3 crates at present:
 * rep_lang_concrete_syntax
 * rep_lang_runtime
 
-== building & running
+== building & running with `cargo`
 
 with https://nixos.org/download.html[`nix`] installed:
 
@@ -23,7 +23,35 @@ $ cargo run --bin rle ./rep_lang_concrete_syntax/examples/ex1.rl
 < output >
 ----
 
-== optional: building & running with `lorri` and `direnv` (more for developers)
+== building with `nix build`
+
+with https://nixos.org/download.html[`nix`] installed:
+
+----
+# new nix
+$ nix build -f default.nix
+
+# old nix
+$ nix-build
+
+# run it
+$ ./result/bin/rli
+$ ./result/bin/rle $PATH_TO_INPUT
+< output >
+----
+
+=== keeping `Cargo.nix` fresh
+
+----
+cargo2nix -f
+----
+
+at present, this must be manually done.
+in the future, an automated check in CI would be nice.
+
+== optional: provisioning developer environment with `lorri` and `direnv`
+
+(this is aimed more for developers)
 
 * install https://github.com/target/lorri[lorri]
 * install https://github.com/direnv/direnv[direnv] (including shell hook)

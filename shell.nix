@@ -1,13 +1,21 @@
 let
   sources = import ./nix/sources.nix;
-  rust = import ./nix/rust.nix { inherit sources; };
+  rust-overlay = import sources.rust-overlay;
+  cargo2nix = (import sources.cargo2nix { }).package;
 in
 
-{ pkgs ? import sources.nixpkgs {}
+{ system ? builtins.currentSystem
+, pkgs ? import sources.nixpkgs {
+    inherit system;
+    overlays = [
+      rust-overlay
+    ];
+  }
 }:
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    rust
+    cargo2nix
+    rust-bin.stable.latest.default
   ];
 }
