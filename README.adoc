@@ -8,6 +8,8 @@ this repository consists of 3 crates at present:
 
 == building & running with `cargo`
 
+(more for development purposes)
+
 with https://nixos.org/download.html[`nix`] installed:
 
 ----
@@ -39,26 +41,3 @@ $ ./result/bin/rli
 $ ./result/bin/rle $PATH_TO_INPUT
 < output >
 ----
-
-=== keeping `Cargo.nix` fresh
-
-----
-cargo2nix -f
-----
-
-at present, this must be manually done.
-in the future, an automated check in CI would be nice.
-
-== optional: provisioning developer environment with `lorri` and `direnv`
-
-(this is aimed more for developers)
-
-* install https://github.com/target/lorri[lorri]
-* install https://github.com/direnv/direnv[direnv] (including shell hook)
-* in root directory of project: `direnv allow`
-
-you'll probably need to start `lorri daemon` somewhere, so that builds with be evaluated.
-
-the advantage of this approach is that lorri will constantly rebuild & manage nix dependencies, and will cache them nicely.
-`nix-shell` will sometimes leave you in a lurch if e.g. your network goes down and it decides it needs to re-fetch everything.
-`lorri`, by comparison, would just allow you to use an old build, and would wait to update the build when network access was restored.
