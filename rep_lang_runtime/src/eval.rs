@@ -214,9 +214,6 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                     }
                     _ => panic!("==: bad types"),
                 },
-                // TODO: example of a place where we might want a HashMap impl for
-                // Sto - to avoid duplicate allocations. there should only be 2 Bool
-                // values allocated - for true & false.
                 PrimOp::Null => {
                     let val = match lookup_sto(&args_v[0], sto) {
                         VCons(_, _) => VBool(false),
@@ -278,9 +275,6 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
             // we treat `Nil` here differently from the other `PrimOp`s,
             // interpreting it directly as a value (since it is not a function,
             // like all the other `PrimOp`s.
-            //
-            // TODO: example of a place where we might want a HashMap impl for
-            // Sto - to avoid duplicate allocations.
             Expr::Prim(PrimOp::Nil) => add_to_sto(VNil, sto),
 
             // this represents a PrimOp that is not in application position.
