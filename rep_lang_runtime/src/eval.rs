@@ -25,9 +25,13 @@ pub enum Value<R> {
     VPair(R, R),
 }
 
+// TODO add thunk type
+
+// TODO this must wrap Thunk
 #[derive(Debug, PartialEq)]
 pub struct FlatValue(pub Value<Box<FlatValue>>);
 
+// TODO modify this to mirror `FlatValue` changes
 #[macro_export]
 macro_rules! vcons {
     ( $a: expr, $b: expr ) => {
@@ -56,6 +60,8 @@ pub fn new_term_env() -> TermEnv {
 
 #[derive(Debug)]
 pub struct Sto {
+    // TODO change this to Thunk<VRef>
+    //               |
     pub sto_vec: Vec<Value<VRef>>,
     // instead of using `Value<VRef>` as keys (which would store the whole value
     // in the HashMap), we only store a hash as key.
@@ -73,6 +79,10 @@ impl Sto {
     }
 }
 
+// TODO decide if this should return a `Value` (thereby forcing the thunk at
+// the provided index), or a `Thunk` (which could still be unevaluated).
+//
+// `Value` is probably the right decision.
 pub fn lookup_sto<'a>(vr: &VRef, sto: &'a Sto) -> &'a Value<VRef> {
     let VRef(idx) = *vr;
     match sto.sto_vec.get(idx) {
@@ -312,6 +322,9 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                         let nm2 = nm.clone();
                         let bd2 = bd.clone();
                         let mut new_env = clo.clone();
+                        // it's possible we need to
+                        // delay this ------------------+
+                        // or it might just work.       |
                         let arg_v = eval_(env, sto, es, arg);
                         new_env.insert(nm2, arg_v);
                         eval_(&new_env, sto, es, &bd2)
