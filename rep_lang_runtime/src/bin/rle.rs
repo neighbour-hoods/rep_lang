@@ -7,7 +7,7 @@ use rep_lang_concrete_syntax::{parse::program, util::pretty::to_pretty};
 
 use rep_lang_runtime::{
     env::Env,
-    eval::{eval_program, lookup_sto, ppr_value_ref},
+    eval::{eval_program, lookup_sto, value_to_flat_thunk},
     infer::infer_program,
 };
 
@@ -29,9 +29,10 @@ fn main() -> std::io::Result<()> {
                     Ok((sc, env)) => {
                         println!("{:?}\n\n{:?}\n", sc, env);
                         let ty = to_pretty(sc.ppr(), width);
-                        let (vr, _env, sto) = eval_program(&prog);
-                        let val = lookup_sto(&vr, &sto);
-                        let val_str = to_pretty(ppr_value_ref(val, &sto), width);
+                        let (vr, _env, mut sto) = eval_program(&prog);
+                        let val = lookup_sto(&vr, &mut sto);
+                        let result_flat_thunk = value_to_flat_thunk(&val, &mut sto);
+                        let val_str = to_pretty(result_flat_thunk.ppr(), width);
                         println!("sto: {:?}\nsto len: {}\n", sto.sto_vec, sto.sto_vec.len());
                         println!("(: {}\n   {}\n)", val_str, ty);
                         Ok(())

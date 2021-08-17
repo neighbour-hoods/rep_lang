@@ -2,8 +2,7 @@ use pretty::RcDoc;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
-    fmt,
-    iter,
+    fmt, iter,
 };
 
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
@@ -29,13 +28,14 @@ pub enum Value<R> {
     VPair(R, R),
 }
 
-enum Thunk<R> {
+pub enum Thunk<R> {
     UnevExpr(Expr, TermEnv),
     UnevRust(Box<dyn FnMut() -> FlatThunk>),
     Ev(Value<R>),
 }
 
-pub fn force_it(thnk: &mut Thunk<VRef>) -> &Value<VRef> {
+// TODO this will perform cloning, perhaps significant amounts of it.
+pub fn force_it(thnk: &mut Thunk<VRef>) -> Value<VRef> {
     todo!()
 }
 
@@ -45,7 +45,10 @@ pub struct FlatThunk(pub Thunk<Box<FlatThunk>>);
 #[macro_export]
 macro_rules! vcons {
     ( $a: expr, $b: expr ) => {
-        FlatThunk(Value::VCons(Box::new(Thunk::Ev($a)), Box::new(Thunk::Ev($b))))
+        FlatThunk(Value::VCons(
+            Box::new(Thunk::Ev($a)),
+            Box::new(Thunk::Ev($b)),
+        ))
     };
 }
 
@@ -75,12 +78,11 @@ impl<R: fmt::Debug> fmt::Debug for Thunk<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Ev(val) => val.fmt(f),
-            UnevExpr(expr, env) => {
-                f.debug_struct("UnevExpr")
-                 .field("expr", &expr)
-                 .field("env", &env)
-                 .finish()
-            },
+            UnevExpr(expr, env) => f
+                .debug_struct("UnevExpr")
+                .field("expr", &expr)
+                .field("env", &env)
+                .finish(),
             UnevRust(_) => f.write_str("UnevRust <<closure>>"),
         }
     }
@@ -94,7 +96,6 @@ pub fn new_term_env() -> TermEnv {
 
 #[derive(Debug)]
 pub struct Sto {
-
     // "heap" of addressed thunks
     pub sto_vec: Vec<Thunk<VRef>>,
 
@@ -122,7 +123,7 @@ impl Sto {
     }
 }
 
-pub fn lookup_sto<'a>(vr: &VRef, sto: &'a mut Sto) -> &'a Value<VRef> {
+pub fn lookup_sto<'a>(vr: &VRef, sto: &'a mut Sto) -> Value<VRef> {
     let VRef(idx) = *vr;
     match sto.sto_vec.get_mut(idx) {
         Some(thnk) => force_it(thnk),
@@ -145,7 +146,7 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
                     VRef(idx)
                 }
             }
-        },
+        }
         UnevExpr(ref expr, ref env) => {
             let hash = calculate_hash(&(expr, env));
             match sto.sto_unev_map.get(&hash) {
@@ -157,7 +158,7 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
                     VRef(idx)
                 }
             }
-        },
+        }
         UnevRust(_) => {
             let idx = sto.sto_vec.len();
             sto.sto_vec.push(thnk);
@@ -166,52 +167,82 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
     }
 }
 
-pub fn value_to_flat_value(val: &Value<VRef>, sto: &mut Sto) -> FlatThunk {
+pub fn value_to_flat_thunk(val: &Value<VRef>, sto: &mut Sto) -> FlatThunk {
     match val {
         VInt(x) => FlatThunk(Ev(VInt(*x))),
         VBool(x) => FlatThunk(Ev(VBool(*x))),
         VClosure(nm, bd, env) => FlatThunk(Ev(VClosure(nm.clone(), bd.clone(), env.clone()))),
         VCons(hd, tl) => {
-            let hd_ref = lookup_sto(hd, sto);
-            let hd_ = value_to_flat_value(hd_ref, sto);
-            let tl_ref = lookup_sto(tl, sto);
-            let tl_ = value_to_flat_value(tl_ref, sto);
+            let hd_v = lookup_sto(hd, sto);
+            let hd_ = value_to_flat_thunk(&hd_v, sto);
+            let tl_v = lookup_sto(tl, sto);
+            let tl_ = value_to_flat_thunk(&tl_v, sto);
             FlatThunk(Ev(VCons(Box::new(hd_), Box::new(tl_))))
         }
         VNil => FlatThunk(Ev(VNil)),
         VPair(x, y) => {
-            let x_ = value_to_flat_value(lookup_sto(x, sto), sto);
-            let y_ = value_to_flat_value(lookup_sto(y, sto), sto);
+            let x_ = value_to_flat_thunk(&lookup_sto(x, sto), sto);
+            let y_ = value_to_flat_thunk(&lookup_sto(y, sto), sto);
             FlatThunk(Ev(VPair(Box::new(x_), Box::new(y_))))
         }
     }
 }
 
-pub fn ppr_value_ref<'a>(val: &'a Value<VRef>, sto: &'a mut Sto) -> RcDoc<'a, ()> {
-    match val {
-        VInt(n) => RcDoc::as_string(n),
-        VBool(true) => RcDoc::text("true"),
-        VBool(false) => RcDoc::text("false"),
-        VClosure(_, _, _) => RcDoc::text("<<closure>>"),
-        VCons(hd, tl) => {
-            let hd_ppr = ppr_value_ref(lookup_sto(hd, &mut sto), sto);
-            let tl_ppr = ppr_value_ref(lookup_sto(tl, &mut sto), sto);
-            parens(
-                RcDoc::text("cons")
-                    .append(sp!())
-                    .append(hd_ppr)
-                    .append(sp!())
-                    .append(tl_ppr),
-            )
-        }
-        VNil => RcDoc::text("nil"),
-        VPair(a, b) => {
-            let a_ppr = ppr_value_ref(lookup_sto(a, &mut sto), sto);
-            let b_ppr = ppr_value_ref(lookup_sto(b, &mut sto), sto);
-            parens(a_ppr.append(RcDoc::text(", ")).append(b_ppr))
+impl FlatThunk {
+    pub fn ppr(&self) -> RcDoc<()> {
+        match self {
+            FlatThunk(Ev(val)) => match val {
+                VInt(n) => RcDoc::as_string(n),
+                VBool(true) => RcDoc::text("true"),
+                VBool(false) => RcDoc::text("false"),
+                VClosure(_, _, _) => RcDoc::text("<<closure>>"),
+                VCons(hd, tl) => parens(
+                    RcDoc::text("cons")
+                        .append(sp!())
+                        .append(hd.ppr())
+                        .append(sp!())
+                        .append(tl.ppr()),
+                ),
+                VNil => RcDoc::text("nil"),
+                VPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
+            },
+            _ => panic!("ppr: FlatThunk: unforced thunk"),
         }
     }
 }
+
+// // TODO figure out if this is revive-able. `RcDoc` seems to do some
+// weirdness with lifetimes that is difficult to make jive with `Sto`.
+//
+// pub fn ppr_value<'a>(val: Value<VRef>, sto: &'a mut Sto) -> RcDoc<'a, ()> {
+//     match val {
+//         VInt(n) => RcDoc::as_string(n),
+//         VBool(true) => RcDoc::text("true"),
+//         VBool(false) => RcDoc::text("false"),
+//         VClosure(_, _, _) => RcDoc::text("<<closure>>"),
+//         VCons(hd, tl) => {
+//             let hd_v = lookup_sto(&hd, sto);
+//             let hd_ppr = ppr_value(hd_v, sto);
+//             let tl_v = lookup_sto(&tl, sto);
+//             let tl_ppr = ppr_value(tl_v, sto);
+//             parens(
+//                 RcDoc::text("cons")
+//                     .append(sp!())
+//                     .append(hd_ppr)
+//                     .append(sp!())
+//                     .append(tl_ppr),
+//             )
+//         }
+//         VNil => RcDoc::text("nil"),
+//         VPair(a, b) => {
+//             let a_v = lookup_sto(&a, sto);
+//             let a_ppr = ppr_value(a_v, sto);
+//             let b_v = lookup_sto(&b, sto);
+//             let b_ppr = ppr_value(b_v, sto);
+//             parens(a_ppr.append(RcDoc::text(", ")).append(b_ppr))
+//         }
+//     }
+// }
 
 pub struct EvalState(u64);
 
@@ -300,11 +331,11 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                     add_to_sto(Ev(val), sto)
                 }
                 PrimOp::Fst => match lookup_sto(&args_v[0], sto) {
-                    VPair(a, _) => *a,
+                    VPair(a, _) => a,
                     _ => panic!("fst: bad types"),
                 },
                 PrimOp::Snd => match lookup_sto(&args_v[0], sto) {
-                    VPair(_, b) => *b,
+                    VPair(_, b) => b,
                     _ => panic!("snd: bad types"),
                 },
                 PrimOp::Cons => {
