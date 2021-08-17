@@ -126,18 +126,30 @@ impl Sto {
 // TODO this likely performs significant amounts of cloning.
 pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto) -> Value<VRef> {
     let VRef(idx) = *vr;
-    match &sto.sto_vec[idx] {
-        Ev(val) => val.clone(),
-        UnevExpr(expr, env) => {
-            let expr2 = expr.clone();
-            let env2 = env.clone();
-            let vr2 = eval_(&env2, sto, es, &expr2);
-            let val = lookup_sto(es, &vr2, sto);
-            // TODO perhaps we can avoid this by using references
-            sto.sto_vec[idx] = Ev(val.clone());
-            val
+    match sto.sto_vec.get_mut(idx) {
+        None => panic!("lookup_sto: out of bounds"),
+        Some(thnk) => {
+            match thnk {
+                Ev(val) => val.clone(),
+                UnevExpr(expr, env) => {
+                    let expr2 = expr.clone();
+                    let env2 = env.clone();
+                    let vr2 = eval_(&env2, sto, es, &expr2);
+                    let val = lookup_sto(es, &vr2, sto);
+                    // TODO perhaps we can avoid this by using references
+                    sto.sto_vec[idx] = Ev(val.clone());
+                    val
+                }
+                UnevRust(clo) => {
+                    let flat_thunk = clo();
+                    let vr2 = flat_thunk_to_sto_ref(es, sto, flat_thunk);
+                    let val = lookup_sto(es, &vr2, sto);
+                    // TODO perhaps we can avoid this by using references
+                    sto.sto_vec[idx] = Ev(val.clone());
+                    val
+                }
+            }
         }
-        UnevRust(_clo) => todo!(),
     }
 }
 
@@ -194,6 +206,36 @@ pub fn value_to_flat_thunk(es: &mut EvalState, val: &Value<VRef>, sto: &mut Sto)
             let y_v = lookup_sto(es, y, sto);
             let y_ = value_to_flat_thunk(es, &y_v, sto);
             FlatThunk(Ev(VPair(Box::new(x_), Box::new(y_))))
+        }
+    }
+}
+
+pub fn flat_thunk_to_sto_ref(es: &mut EvalState, sto: &mut Sto, flat_thunk: FlatThunk) -> VRef {
+    let FlatThunk(thunk) = flat_thunk;
+    match thunk {
+        UnevExpr(expr, env) => add_to_sto(UnevExpr(expr, env), sto),
+        UnevRust(clo) => add_to_sto(UnevRust(clo), sto),
+        Ev(val) => {
+            let new_val = match val {
+                VCons(hd, tl) => {
+                    let hd_ = flat_thunk_to_sto_ref(es, sto, *hd);
+                    let tl_ = flat_thunk_to_sto_ref(es, sto, *tl);
+                    VCons(hd_, tl_)
+                }
+                VPair(x, y) => {
+                    let x_ = flat_thunk_to_sto_ref(es, sto, *x);
+                    let y_ = flat_thunk_to_sto_ref(es, sto, *y);
+                    VPair(x_, y_)
+                }
+
+                // these last 4 cases seem like boilerplate, but I believe it's
+                // necessary in order to recast the structs with a different `<R>`.
+                VInt(x) => VInt(x),
+                VBool(x) => VBool(x),
+                VClosure(nm, bd, env) => VClosure(nm, bd, env),
+                VNil => VNil,
+            };
+            add_to_sto(Ev(new_val), sto)
         }
     }
 }
