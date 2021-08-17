@@ -18,7 +18,7 @@ use Value::*;
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct VRef(usize);
 
-#[derive(Debug, Eq, Hash)]
+#[derive(Clone, Debug, Eq, Hash)]
 pub enum Value<R> {
     VInt(i64),
     VBool(bool),
@@ -32,11 +32,6 @@ pub enum Thunk<R> {
     UnevExpr(Expr, TermEnv),
     UnevRust(Box<dyn FnMut() -> FlatThunk>),
     Ev(Value<R>),
-}
-
-// TODO this will perform cloning, perhaps significant amounts of it.
-pub fn force_it(thnk: &mut Thunk<VRef>) -> Value<VRef> {
-    todo!()
 }
 
 #[derive(Debug, PartialEq)]
@@ -77,7 +72,7 @@ impl<R: PartialEq> PartialEq for Thunk<R> {
 impl<R: fmt::Debug> fmt::Debug for Thunk<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Ev(val) => val.fmt(f),
+            Ev(val) => f.debug_struct("Ev").field("_", val).finish(),
             UnevExpr(expr, env) => f
                 .debug_struct("UnevExpr")
                 .field("expr", &expr)
@@ -123,11 +118,21 @@ impl Sto {
     }
 }
 
-pub fn lookup_sto<'a>(vr: &VRef, sto: &'a mut Sto) -> Value<VRef> {
+// TODO this likely performs significant amounts of cloning.
+pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto) -> Value<VRef> {
     let VRef(idx) = *vr;
     match sto.sto_vec.get_mut(idx) {
-        Some(thnk) => force_it(thnk),
         None => panic!("lookup_sto: out of bounds"),
+        Some(thnk) => match thnk {
+            Ev(val) => val.clone(),
+            UnevExpr(expr, env) => {
+                let expr2 = expr.clone();
+                let env2 = env.clone();
+                let vr2 = eval_(&env2, sto, es, &expr2);
+                lookup_sto(es, &vr2, sto)
+            }
+            _ => todo!(),
+        },
     }
 }
 
@@ -167,22 +172,24 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
     }
 }
 
-pub fn value_to_flat_thunk(val: &Value<VRef>, sto: &mut Sto) -> FlatThunk {
+pub fn value_to_flat_thunk(es: &mut EvalState, val: &Value<VRef>, sto: &mut Sto) -> FlatThunk {
     match val {
         VInt(x) => FlatThunk(Ev(VInt(*x))),
         VBool(x) => FlatThunk(Ev(VBool(*x))),
         VClosure(nm, bd, env) => FlatThunk(Ev(VClosure(nm.clone(), bd.clone(), env.clone()))),
         VCons(hd, tl) => {
-            let hd_v = lookup_sto(hd, sto);
-            let hd_ = value_to_flat_thunk(&hd_v, sto);
-            let tl_v = lookup_sto(tl, sto);
-            let tl_ = value_to_flat_thunk(&tl_v, sto);
+            let hd_v = lookup_sto(es, hd, sto);
+            let hd_ = value_to_flat_thunk(es, &hd_v, sto);
+            let tl_v = lookup_sto(es, tl, sto);
+            let tl_ = value_to_flat_thunk(es, &tl_v, sto);
             FlatThunk(Ev(VCons(Box::new(hd_), Box::new(tl_))))
         }
         VNil => FlatThunk(Ev(VNil)),
         VPair(x, y) => {
-            let x_ = value_to_flat_thunk(&lookup_sto(x, sto), sto);
-            let y_ = value_to_flat_thunk(&lookup_sto(y, sto), sto);
+            let x_v = lookup_sto(es, x, sto);
+            let x_ = value_to_flat_thunk(es, &x_v, sto);
+            let y_v = lookup_sto(es, y, sto);
+            let y_ = value_to_flat_thunk(es, &y_v, sto);
             FlatThunk(Ev(VPair(Box::new(x_), Box::new(y_))))
         }
     }
@@ -269,15 +276,12 @@ impl Default for EvalState {
     }
 }
 
-pub fn eval_program(prog: &Program) -> (VRef, TermEnv, Sto) {
-    let mut env = new_term_env();
-    let mut es = EvalState::new();
-    let mut sto = Sto::new();
+pub fn eval_program(env: &mut TermEnv, sto: &mut Sto, es: &mut EvalState, prog: &Program) -> VRef {
     for Defn(nm, bd) in prog.p_defns.iter() {
-        let val = eval_(&env, &mut sto, &mut es, bd);
-        env.insert(nm.clone(), val);
+        let vr = eval_(&env, sto, es, bd);
+        env.insert(nm.clone(), vr);
     }
-    (eval_(&env, &mut sto, &mut es, &prog.p_body), env, sto)
+    eval_(&env, sto, es, &prog.p_body)
 }
 
 pub fn eval(sto: &mut Sto, expr: &Expr) -> VRef {
@@ -287,8 +291,8 @@ pub fn eval(sto: &mut Sto, expr: &Expr) -> VRef {
 }
 
 macro_rules! primop_binop_int {
-    ( $op: tt, $op_name: literal, $arg_1: expr, $arg_2: expr, $sto: expr ) => {
-        match (lookup_sto($arg_1, $sto), lookup_sto($arg_2, $sto)) {
+    ( $op: tt, $op_name: literal, $es: expr, $arg_1: expr, $arg_2: expr, $sto: expr ) => {
+        match (lookup_sto($es, $arg_1, $sto), lookup_sto($es, $arg_2, $sto)) {
             (VInt(a_), VInt(b_)) => {
                 let val = VInt(a_ $op b_);
                 add_to_sto(Ev(val), $sto)
@@ -307,11 +311,14 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                 .map(|arg| eval_(env, sto, es, &arg.clone()))
                 .collect();
             match op {
-                PrimOp::Add => primop_binop_int!(+, "+", &args_v[0], &args_v[1], sto),
-                PrimOp::Sub => primop_binop_int!(-, "-", &args_v[0], &args_v[1], sto),
-                PrimOp::Mul => primop_binop_int!(*, "*", &args_v[0], &args_v[1], sto),
-                PrimOp::Div => primop_binop_int!(/, "/", &args_v[0], &args_v[1], sto),
-                PrimOp::Eql => match (lookup_sto(&args_v[0], sto), lookup_sto(&args_v[1], sto)) {
+                PrimOp::Add => primop_binop_int!(+, "+", es, &args_v[0], &args_v[1], sto),
+                PrimOp::Sub => primop_binop_int!(-, "-", es, &args_v[0], &args_v[1], sto),
+                PrimOp::Mul => primop_binop_int!(*, "*", es, &args_v[0], &args_v[1], sto),
+                PrimOp::Div => primop_binop_int!(/, "/", es, &args_v[0], &args_v[1], sto),
+                PrimOp::Eql => match (
+                    lookup_sto(es, &args_v[0], sto),
+                    lookup_sto(es, &args_v[1], sto),
+                ) {
                     (VInt(a_), VInt(b_)) => {
                         let val = VBool(a_ == b_);
                         add_to_sto(Ev(val), sto)
@@ -319,7 +326,7 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                     _ => panic!("==: bad types"),
                 },
                 PrimOp::Null => {
-                    let val = match lookup_sto(&args_v[0], sto) {
+                    let val = match lookup_sto(es, &args_v[0], sto) {
                         VCons(_, _) => VBool(false),
                         VNil => VBool(true),
                         _ => panic!("null: bad types"),
@@ -330,11 +337,11 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                     let val = VPair(args_v[0], args_v[1]);
                     add_to_sto(Ev(val), sto)
                 }
-                PrimOp::Fst => match lookup_sto(&args_v[0], sto) {
+                PrimOp::Fst => match lookup_sto(es, &args_v[0], sto) {
                     VPair(a, _) => a,
                     _ => panic!("fst: bad types"),
                 },
-                PrimOp::Snd => match lookup_sto(&args_v[0], sto) {
+                PrimOp::Snd => match lookup_sto(es, &args_v[0], sto) {
                     VPair(_, b) => b,
                     _ => panic!("snd: bad types"),
                 },
@@ -369,7 +376,7 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
 
             Expr::If(tst, thn, els) => {
                 let tst_ref = eval_(env, sto, es, tst);
-                match lookup_sto(&tst_ref, sto) {
+                match lookup_sto(es, &tst_ref, sto) {
                     VBool(true) => eval_(env, sto, es, thn),
                     VBool(false) => eval_(env, sto, es, els),
                     _ => panic!("impossible: non-bool in test position of if"),
@@ -410,7 +417,7 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
 
             Expr::App(fun, arg) => {
                 let fun_ref = eval_(env, sto, es, fun);
-                let fun_val = lookup_sto(&fun_ref, sto);
+                let fun_val = lookup_sto(es, &fun_ref, sto);
                 match fun_val {
                     VClosure(nm, bd, clo) => {
                         let nm2 = nm.clone();

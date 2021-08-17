@@ -50,8 +50,9 @@ fn main() {
                                     let ty = to_pretty(sc.ppr(), width);
                                     type_env.extend(nm.clone(), sc);
                                     let vr = eval_(&term_env, &mut sto, &mut es, &e);
-                                    let val = lookup_sto(&vr, &mut sto);
-                                    let result_flat_thunk = value_to_flat_thunk(&val, &mut sto);
+                                    let val = lookup_sto(&mut es, &vr, &mut sto);
+                                    let result_flat_thunk =
+                                        value_to_flat_thunk(&mut es, &val, &mut sto);
                                     let val_str = to_pretty(result_flat_thunk.ppr(), width);
                                     term_env.insert(nm, vr);
                                     println!("(: {}\n   {}\n)", val_str, ty);
