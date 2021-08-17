@@ -37,13 +37,18 @@ pub enum Thunk<R> {
 #[derive(Debug, PartialEq)]
 pub struct FlatThunk(pub Thunk<Box<FlatThunk>>);
 
+// FlatThunk Ev
+#[macro_export]
+macro_rules! fte {
+    ( $a: expr ) => {
+        FlatThunk(Thunk::Ev($a))
+    };
+}
+
 #[macro_export]
 macro_rules! vcons {
     ( $a: expr, $b: expr ) => {
-        FlatThunk(Value::VCons(
-            Box::new(Thunk::Ev($a)),
-            Box::new(Thunk::Ev($b)),
-        ))
+        FlatThunk(Thunk::Ev(Value::VCons(Box::new($a), Box::new($b))))
     };
 }
 
