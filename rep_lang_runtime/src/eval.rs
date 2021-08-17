@@ -137,12 +137,10 @@ pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto) -> Value<
             sto.sto_vec[idx] = Ev(val.clone());
             val
         }
-        _ => todo!(),
+        UnevRust(_clo) => todo!(),
     }
 }
 
-// TODO this is a call site where many critical points pass through. need to
-// review what should be un/evaluated.
 pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
     match thnk {
         Ev(ref val) => {
