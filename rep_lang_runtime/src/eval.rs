@@ -416,11 +416,9 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                         let nm2 = nm.clone();
                         let bd2 = bd.clone();
                         let mut new_env = clo.clone();
-                        // TODO it's possible we need to
-                        // delay this ------------------+
-                        // or it might just work.       |
-                        let arg_v = eval_(env, sto, es, arg);
-                        new_env.insert(nm2, arg_v);
+                        let arg_thnk = UnevExpr(*arg.clone(), env.clone());
+                        let arg_thnk_ref = add_to_sto(arg_thnk, sto);
+                        new_env.insert(nm2, arg_thnk_ref);
                         eval_(&new_env, sto, es, &bd2)
                     }
                     _ => panic!("impossible: non-closure in function position of app"),
