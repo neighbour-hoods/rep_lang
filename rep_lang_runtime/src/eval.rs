@@ -126,18 +126,18 @@ impl Sto {
 // TODO this likely performs significant amounts of cloning.
 pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto) -> Value<VRef> {
     let VRef(idx) = *vr;
-    match sto.sto_vec.get_mut(idx) {
-        None => panic!("lookup_sto: out of bounds"),
-        Some(thnk) => match thnk {
-            Ev(val) => val.clone(),
-            UnevExpr(expr, env) => {
-                let expr2 = expr.clone();
-                let env2 = env.clone();
-                let vr2 = eval_(&env2, sto, es, &expr2);
-                lookup_sto(es, &vr2, sto)
-            }
-            _ => todo!(),
-        },
+    match &sto.sto_vec[idx] {
+        Ev(val) => val.clone(),
+        UnevExpr(expr, env) => {
+            let expr2 = expr.clone();
+            let env2 = env.clone();
+            let vr2 = eval_(&env2, sto, es, &expr2);
+            let val = lookup_sto(es, &vr2, sto);
+            // TODO perhaps we can avoid this by using references
+            sto.sto_vec[idx] = Ev(val.clone());
+            val
+        }
+        _ => todo!(),
     }
 }
 

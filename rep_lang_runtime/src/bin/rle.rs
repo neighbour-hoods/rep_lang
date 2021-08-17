@@ -36,7 +36,12 @@ fn main() -> std::io::Result<()> {
                         let val = lookup_sto(&mut es, &vr, &mut sto);
                         let result_flat_thunk = value_to_flat_thunk(&mut es, &val, &mut sto);
                         let val_str = to_pretty(result_flat_thunk.ppr(), width);
-                        println!("sto: {:?}\nsto len: {}\n", sto.sto_vec, sto.sto_vec.len());
+                        println!("sto: [");
+                        for elem in &sto.sto_vec {
+                            println!("\t{:?}", elem);
+                        }
+                        println!("]");
+                        println!("sto len: {}\n", sto.sto_vec.len());
                         println!("(: {}\n   {}\n)", val_str, ty);
                         Ok(())
                     }
