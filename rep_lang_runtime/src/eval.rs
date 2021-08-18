@@ -476,6 +476,13 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                     _ => panic!("impossible: non-closure in function position of app"),
                 }
             }
+
+            Expr::Fix(e) => eval_(
+                env,
+                sto,
+                es,
+                &Expr::App(e.clone(), Box::new(Expr::Fix(e.clone()))),
+            ),
         },
     }
 }

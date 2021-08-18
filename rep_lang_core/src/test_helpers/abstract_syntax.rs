@@ -53,6 +53,11 @@ impl Arbitrary for Expr {
                 let elss = single_shrinker(*els.clone()).chain(els.shrink().map(|v| *v));
                 Box::new(pairs.chain(tsts).chain(thns).chain(elss))
             }
+            Expr::Fix(bd) => {
+                let chain = bd.shrink().map(Expr::Fix);
+                let bds = single_shrinker(*bd.clone()).chain(bd.shrink().map(|v| *v));
+                Box::new(chain.chain(bds))
+            }
             Expr::Var(_) | Expr::Lit(_) | Expr::Prim(_) => empty_shrinker(),
         }
     }
@@ -69,7 +74,7 @@ impl Arbitrary for Expr {
 // parameter as we recur, and terminating when it hits a bound.
 #[allow(dead_code)]
 pub fn gen_expr<G: Gen>(g: &mut G, size: usize, reserved: &[String]) -> Expr {
-    let upper_bound = if size < 1 { 3 } else { 7 };
+    let upper_bound = if size < 1 { 3 } else { 8 };
     match g.gen_range(0, upper_bound) {
         0 => Expr::Var(arbitrary_name(g, reserved)),
         1 => Expr::Lit(arbitrary_lit(g)),
@@ -95,6 +100,10 @@ pub fn gen_expr<G: Gen>(g: &mut G, size: usize, reserved: &[String]) -> Expr {
             let thn = gen_expr(g, size / 3, reserved);
             let els = gen_expr(g, size / 3, reserved);
             Expr::If(Box::new(tst), Box::new(thn), Box::new(els))
+        }
+        7 => {
+            let bd = gen_expr(g, size * 5 / 6, reserved);
+            Expr::Fix(Box::new(bd))
         }
         _ => panic!("impossible: gen_expr: gen out of bounds"),
     }
