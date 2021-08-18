@@ -123,6 +123,12 @@ impl Sto {
     }
 }
 
+impl Default for Sto {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // TODO this likely performs significant amounts of cloning.
 pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto) -> Value<VRef> {
     let VRef(idx) = *vr;
@@ -323,10 +329,10 @@ impl Default for EvalState {
 
 pub fn eval_program(env: &mut TermEnv, sto: &mut Sto, es: &mut EvalState, prog: &Program) -> VRef {
     for Defn(nm, bd) in prog.p_defns.iter() {
-        let vr = eval_(&env, sto, es, bd);
+        let vr = eval_(env, sto, es, bd);
         env.insert(nm.clone(), vr);
     }
-    eval_(&env, sto, es, &prog.p_body)
+    eval_(env, sto, es, &prog.p_body)
 }
 
 pub fn eval(sto: &mut Sto, expr: &Expr) -> VRef {
@@ -475,13 +481,11 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                 let fun_val = lookup_sto(es, &fun_ref, sto);
                 match fun_val {
                     VClosure(nm, bd, clo) => {
-                        let nm2 = nm.clone();
-                        let bd2 = bd.clone();
-                        let mut new_env = clo.clone();
+                        let mut new_env = clo;
                         let arg_thnk = UnevExpr(*arg.clone(), env.clone());
                         let arg_thnk_ref = add_to_sto(arg_thnk, sto);
-                        new_env.insert(nm2, arg_thnk_ref);
-                        eval_(&new_env, sto, es, &bd2)
+                        new_env.insert(nm, arg_thnk_ref);
+                        eval_(&new_env, sto, es, &bd)
                     }
                     _ => panic!("impossible: non-closure in function position of app"),
                 }
