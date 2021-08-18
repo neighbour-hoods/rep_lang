@@ -25,3 +25,21 @@ where
         }
     })
 }
+
+pub fn i64_vec_to_flat_thunk_list(vec: Vec<i64>) -> Thunk<VRef> {
+    UnevRust(Box::new(rec_vec(vec, 0)))
+}
+
+fn rec_vec(vec: Vec<i64>, idx: usize) -> Box<dyn FnMut() -> FlatThunk> {
+    Box::new(move || {
+        if idx >= vec.len() {
+            FlatThunk(Ev(VNil))
+        } else {
+            let hd = Box::new(FlatThunk(Ev(VInt(vec[idx]))));
+                // this seems suboptimal, due to excessive cloning, but I'm
+                // not sure how to do better ----------------\/
+            let tl = Box::new(FlatThunk(UnevRust(rec_vec(vec.clone(), idx + 1))));
+            FlatThunk(Ev(VCons(hd, tl)))
+        }
+    })
+}
