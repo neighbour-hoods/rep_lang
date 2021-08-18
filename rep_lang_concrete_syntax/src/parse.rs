@@ -42,6 +42,8 @@ where
         res_str("snd").map(|_| PrimOp::Snd),
         res_str("cons").map(|_| PrimOp::Cons),
         res_str("nil").map(|_| PrimOp::Nil),
+        res_str("head").map(|_| PrimOp::Head),
+        res_str("tail").map(|_| PrimOp::Tail),
     ))
     .map(Expr::Prim);
 
@@ -228,7 +230,7 @@ where
 pub fn reserved() -> Vec<String> {
     [
         "let", "lam", "fix", "true", "false", "if", "null", "pair", "fst", "snd", "cons", "defn",
-        "list", "nil",
+        "list", "nil", "head", "tail",
     ]
     .iter()
     .map(|x| x.to_string())

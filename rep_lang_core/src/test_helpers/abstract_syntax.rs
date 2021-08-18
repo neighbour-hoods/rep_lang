@@ -133,7 +133,7 @@ pub fn arbitrary_name<G: Gen>(g: &mut G, reserved: &[String]) -> Name {
 
 #[allow(dead_code)]
 pub fn arbitrary_primop<G: Gen>(g: &mut G) -> PrimOp {
-    match g.gen_range(0, 10) {
+    match g.gen_range(0, 12) {
         0 => PrimOp::Add,
         1 => PrimOp::Sub,
         2 => PrimOp::Mul,
@@ -144,6 +144,8 @@ pub fn arbitrary_primop<G: Gen>(g: &mut G) -> PrimOp {
         7 => PrimOp::Snd,
         8 => PrimOp::Cons,
         9 => PrimOp::Nil,
+        10 => PrimOp::Head,
+        11 => PrimOp::Tail,
         _ => panic!("impossible: Arbitrary: PrimOp: gen out of bounds"),
     }
 }

@@ -394,6 +394,16 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
                     let val = VCons(args_v[0], args_v[1]);
                     add_to_sto(Ev(val), sto)
                 }
+                PrimOp::Head => match lookup_sto(es, &args_v[0], sto) {
+                    VCons(hd, _tl) => hd,
+                    VNil => panic!("head: called on empty list"),
+                    _ => panic!("head: bad types"),
+                },
+                PrimOp::Tail => match lookup_sto(es, &args_v[0], sto) {
+                    VCons(_hd, tl) => tl,
+                    VNil => panic!("tail: called on empty list"),
+                    _ => panic!("tail: bad types"),
+                },
                 PrimOp::Nil => panic!("nil: application of non-function"),
             }
         }

@@ -73,6 +73,8 @@ pub fn ppr_primop(op: &PrimOp) -> RcDoc<()> {
         Snd => RcDoc::text("snd"),
         Cons => RcDoc::text("cons"),
         Nil => RcDoc::text("nil"),
+        Head => RcDoc::text("head"),
+        Tail => RcDoc::text("tail"),
     }
 }
 
