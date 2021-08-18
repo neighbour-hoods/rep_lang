@@ -1,4 +1,4 @@
-use rep_lang_concrete_syntax::{util::pretty::to_pretty};
+use rep_lang_concrete_syntax::util::pretty::to_pretty;
 
 use rep_lang_runtime::{
     eval::{add_to_sto, lookup_sto, new_term_env, value_to_flat_thunk, EvalState, Sto},
@@ -11,7 +11,7 @@ fn main() -> std::io::Result<()> {
     let mut env = new_term_env();
     let mut es = EvalState::new();
     let mut sto = Sto::new();
-    let vec: Vec<i64> = vec![1,2,3,4];
+    let vec: Vec<i64> = vec![1, 2, 3, 4];
     let itr_thnk = i64_vec_to_flat_thunk_list(vec);
     let vr = add_to_sto(itr_thnk, &mut sto);
     let nm = es.fresh();

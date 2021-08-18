@@ -36,8 +36,8 @@ fn rec_vec(vec: Vec<i64>, idx: usize) -> Box<dyn FnMut() -> FlatThunk> {
             FlatThunk(Ev(VNil))
         } else {
             let hd = Box::new(FlatThunk(Ev(VInt(vec[idx]))));
-                // this seems suboptimal, due to excessive cloning, but I'm
-                // not sure how to do better ----------------\/
+            // this seems suboptimal, due to excessive cloning, but I'm
+            // not sure how to do better --------------------\/
             let tl = Box::new(FlatThunk(UnevRust(rec_vec(vec.clone(), idx + 1))));
             FlatThunk(Ev(VCons(hd, tl)))
         }
