@@ -12,6 +12,7 @@ use rep_lang_core::{
     util::calculate_hash,
 };
 
+use StoCell::*;
 use Thunk::*;
 use Value::*;
 
@@ -95,9 +96,15 @@ pub fn new_term_env() -> TermEnv {
 }
 
 #[derive(Debug)]
+pub enum StoCell {
+    CellThunk(Thunk<VRef>),
+    CellRedirect(VRef),
+}
+
+#[derive(Debug)]
 pub struct Sto {
     // "heap" of addressed thunks
-    pub sto_vec: Vec<Thunk<VRef>>,
+    pub sto_vec: Vec<StoCell>,
 
     // map from evaluated `Value` to index in `sto_vec`.
     //
@@ -129,33 +136,31 @@ impl Default for Sto {
     }
 }
 
-// TODO this likely performs significant amounts of cloning.
+// TODO this likely performs significant amounts of cloning. however, it's
+// possible this is approximately the minimal amount of cloning possible.
 pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto) -> Value<VRef> {
     let VRef(idx) = *vr;
     match sto.sto_vec.get_mut(idx) {
         None => panic!("lookup_sto: out of bounds"),
-        Some(thnk) => {
-            match thnk {
-                Ev(val) => val.clone(),
-                UnevExpr(expr, env) => {
-                    let expr2 = expr.clone();
-                    let env2 = env.clone();
-                    let vr2 = eval_(&env2, sto, es, &expr2);
-                    let val = lookup_sto(es, &vr2, sto);
-                    // TODO perhaps we can avoid this by using references
-                    sto.sto_vec[idx] = Ev(val.clone());
-                    val
-                }
-                UnevRust(clo) => {
-                    let flat_thunk = clo();
-                    let vr2 = flat_thunk_to_sto_ref(es, sto, flat_thunk);
-                    let val = lookup_sto(es, &vr2, sto);
-                    // TODO perhaps we can avoid this by using references
-                    sto.sto_vec[idx] = Ev(val.clone());
-                    val
-                }
+        Some(CellRedirect(vr2)) => lookup_sto(es, &vr2.clone(), sto),
+        Some(CellThunk(thnk)) => match thnk {
+            Ev(val) => val.clone(),
+            UnevExpr(expr, env) => {
+                let expr2 = expr.clone();
+                let env2 = env.clone();
+                let vr2 = eval_(&env2, sto, es, &expr2);
+                let val = lookup_sto(es, &vr2, sto);
+                sto.sto_vec[idx] = CellRedirect(vr2);
+                val
             }
-        }
+            UnevRust(clo) => {
+                let flat_thunk = clo();
+                let vr2 = flat_thunk_to_sto_ref(es, sto, flat_thunk);
+                let val = lookup_sto(es, &vr2, sto);
+                sto.sto_vec[idx] = CellRedirect(vr2);
+                val
+            }
+        },
     }
 }
 
@@ -167,7 +172,7 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
                 Some(idx) => VRef(*idx),
                 None => {
                     let idx = sto.sto_vec.len();
-                    sto.sto_vec.push(thnk);
+                    sto.sto_vec.push(CellThunk(thnk));
                     sto.sto_ev_map.insert(hash, idx);
                     VRef(idx)
                 }
@@ -179,7 +184,7 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
                 Some(idx) => VRef(*idx),
                 None => {
                     let idx = sto.sto_vec.len();
-                    sto.sto_vec.push(thnk);
+                    sto.sto_vec.push(CellThunk(thnk));
                     sto.sto_unev_map.insert(hash, idx);
                     VRef(idx)
                 }
@@ -187,7 +192,7 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
         }
         UnevRust(_) => {
             let idx = sto.sto_vec.len();
-            sto.sto_vec.push(thnk);
+            sto.sto_vec.push(CellThunk(thnk));
             VRef(idx)
         }
     }
