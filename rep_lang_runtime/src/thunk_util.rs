@@ -52,24 +52,26 @@ fn rec_vec(vec: Vec<i64>, idx: usize) -> Box<dyn FnMut() -> FlatThunk> {
     })
 }
 
-pub fn file_byte_to_flat_thunk_list(fp: &Path) -> Thunk<VRef> {
-    let mut file = File::open(fp).unwrap();
-    UnevRust(Box::new(rec_bytes(&mut file)))
+pub fn file_byte_to_flat_thunk_list(fp: &'static Path) -> Thunk<VRef> {
+    UnevRust(Box::new(rec_bytes(fp, 0)))
 }
 
-pub fn rec_bytes(file: &mut File) -> Box<dyn FnMut() -> FlatThunk + '_> {
+pub fn rec_bytes(fp: &'static Path, offset: u64) -> Box<dyn FnMut() -> FlatThunk + '_> {
     Box::new(move || {
+        let mut file = File::open(fp).unwrap();
         let mut buf = [0; 8];
 
+        let seek_position = file.seek(SeekFrom::Start(offset)).unwrap();
+        assert_eq!(offset, seek_position, "rec_bytes: bad seek");
         let n = file.read(&mut buf[..]).unwrap();
+        let n_: u64 = n.try_into().unwrap();
 
         if n == 0 {
             FlatThunk(Ev(VNil))
         } else {
             let i = BigEndian::read_i64(&buf);
             let hd = Box::new(FlatThunk(Ev(VInt(i))));
-            file.seek(SeekFrom::Current(n.try_into().unwrap()));
-            let tl = Box::new(FlatThunk(UnevRust(rec_bytes(file))));
+            let tl = Box::new(FlatThunk(UnevRust(rec_bytes(fp, offset + n_))));
             FlatThunk(Ev(VCons(hd, tl)))
         }
     })
