@@ -3,7 +3,6 @@ use std::{
     convert::TryInto,
     fs::File,
     io::{Read, Seek, SeekFrom},
-    path::Path,
 };
 
 use super::eval::{FlatThunk, Thunk, Thunk::*, VRef, Value::*};
@@ -52,13 +51,13 @@ fn rec_vec(vec: Vec<i64>, idx: usize) -> Box<dyn FnMut() -> FlatThunk> {
     })
 }
 
-pub fn file_byte_to_flat_thunk_list(fp: &'static Path) -> Thunk<VRef> {
+pub fn file_byte_to_flat_thunk_list(fp: String) -> Thunk<VRef> {
     UnevRust(Box::new(rec_bytes(fp, 0)))
 }
 
-pub fn rec_bytes(fp: &'static Path, offset: u64) -> Box<dyn FnMut() -> FlatThunk + '_> {
+fn rec_bytes(fp: String, offset: u64) -> Box<dyn FnMut() -> FlatThunk> {
     Box::new(move || {
-        let mut file = File::open(fp).unwrap();
+        let mut file = File::open(fp.clone()).unwrap();
         let mut buf = [0; 8];
 
         let seek_position = file.seek(SeekFrom::Start(offset)).unwrap();
@@ -71,7 +70,7 @@ pub fn rec_bytes(fp: &'static Path, offset: u64) -> Box<dyn FnMut() -> FlatThunk
         } else {
             let i = BigEndian::read_i64(&buf);
             let hd = Box::new(FlatThunk(Ev(VInt(i))));
-            let tl = Box::new(FlatThunk(UnevRust(rec_bytes(fp, offset + n_))));
+            let tl = Box::new(FlatThunk(UnevRust(rec_bytes(fp.clone(), offset + n_))));
             FlatThunk(Ev(VCons(hd, tl)))
         }
     })

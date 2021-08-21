@@ -332,10 +332,15 @@ impl Default for EvalState {
     }
 }
 
+pub fn eval_defn(env: &mut TermEnv, sto: &mut Sto, es: &mut EvalState, defn: &Defn) {
+    let Defn(nm, bd) = defn;
+    let vr = eval_(env, sto, es, bd);
+    env.insert(nm.clone(), vr);
+}
+
 pub fn eval_program(env: &mut TermEnv, sto: &mut Sto, es: &mut EvalState, prog: &Program) -> VRef {
-    for Defn(nm, bd) in prog.p_defns.iter() {
-        let vr = eval_(env, sto, es, bd);
-        env.insert(nm.clone(), vr);
+    for defn in prog.p_defns.iter() {
+        eval_defn(env, sto, es, defn);
     }
     eval_(env, sto, es, &prog.p_body)
 }
