@@ -7,13 +7,34 @@ use rep_lang_core::{
     app, lam,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Value {
     VInt(i64),
     VBool(bool),
     VClosure(Name, Box<Expr>, TermEnv),
-    VList(Vec<Value>),
+    VCons(Box<Value>, Box<Value>),
+    VNil,
     VPair(Box<Value>, Box<Value>),
+}
+
+#[macro_export]
+macro_rules! vcons {
+    ( $a: expr, $b: expr ) => {
+        Value::VCons(Box::new($a), Box::new($b))
+    };
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (VInt(i1), VInt(i2)) => i1 == i2,
+            (VBool(b1), VBool(b2)) => b1 == b2,
+            (VCons(x1, l1), VCons(x2, l2)) => x1 == x2 && l1 == l2,
+            (VNil, VNil) => true,
+            (VPair(x1, y1), VPair(x2, y2)) => x1 == x2 && y1 == y2,
+            (_, _) => false,
+        }
+    }
 }
 
 type TermEnv = HashMap<Name, Value>;
@@ -25,12 +46,14 @@ impl Value {
             VBool(true) => RcDoc::text("true"),
             VBool(false) => RcDoc::text("false"),
             VClosure(_, _, _) => RcDoc::text("<<closure>>"),
-            VList(vec) => {
-                let header = iter::once(RcDoc::text("(list"));
-                let footer = RcDoc::text(")");
-                let middle = vec.iter().map(|x| x.ppr());
-                RcDoc::intersperse(header.chain(middle), sp!()).append(footer)
-            }
+            VCons(hd, tl) => parens(
+                RcDoc::text("cons")
+                    .append(sp!())
+                    .append(hd.ppr())
+                    .append(sp!())
+                    .append(tl.ppr()),
+            ),
+            VNil => RcDoc::text("nil"),
             VPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
         }
     }
@@ -108,42 +131,9 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                     _ => panic!("==: bad types"),
                 },
                 PrimOp::Null => match &args_v[0] {
-                    VList(vec) => VBool(vec.is_empty()),
+                    VCons(_, _) => VBool(false),
+                    VNil => VBool(true),
                     _ => panic!("null: bad types"),
-                },
-                PrimOp::Map => match (&args_v[0], &args_v[1]) {
-                    (VClosure(nm, bd, clo), VList(vec)) => {
-                        let mut results = Vec::new();
-                        for arg_v in vec {
-                            let mut new_env = clo.clone();
-                            // TODO
-                            // why is this clone necessary? \|/
-                            // don't we have ownership?      |
-                            new_env.insert(nm.clone(), arg_v.clone());
-                            results.push(eval_(&new_env, es, bd));
-                        }
-                        Value::VList(results)
-                    }
-                    _ => panic!("map: bad types"),
-                },
-                PrimOp::Foldl => match (&args_v[0], &args_v[1], &args_v[2]) {
-                    (VClosure(nm, bd, clo), init, VList(vec)) => {
-                        let applicator = |acc: Value, arg_v: &Value| {
-                            let mut new_env = clo.clone();
-                            new_env.insert(nm.clone(), acc);
-                            match eval_(&new_env, es, bd) {
-                                VClosure(nm2, bd2, clo2) => {
-                                    let mut new_env2 = clo2;
-                                    new_env2.insert(nm2, arg_v.clone());
-                                    eval_(&new_env2, es, &bd2)
-                                }
-                                _ => panic!("foldl: bad types"),
-                            }
-                        };
-                        // TODO: why is this clone necessary?
-                        vec.iter().fold(init.clone(), applicator)
-                    }
-                    _ => panic!("foldl: bad types"),
                 },
                 PrimOp::Pair => {
                     let a = args_v[0].clone();
@@ -158,12 +148,7 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
                     VPair(_, b) => *b.clone(),
                     _ => panic!("snd: bad types"),
                 },
-                PrimOp::Cons => match &args_v[1] {
-                    VList(vec) => {
-                        VList(iter::once(&args_v[0]).chain(vec.iter()).cloned().collect())
-                    }
-                    _ => panic!("cons: bad types"),
-                },
+                PrimOp::Cons => VCons(Box::new(args_v[0].clone()), Box::new(args_v[1].clone())),
                 PrimOp::Nil => panic!("nil: application of non-function"),
             }
         }
@@ -198,23 +183,33 @@ pub fn eval_(env: &TermEnv, es: &mut EvalState, expr: &Expr) -> Value {
             // we treat `Nil` here differently from the other `PrimOp`s,
             // interpreting it directly as a value (since it is not a function,
             // like all the other `PrimOp`s.
-            Expr::Prim(PrimOp::Nil) => VList(Vec::new()),
+            Expr::Prim(PrimOp::Nil) => VNil,
 
             // this represents a PrimOp that is not in application position.
             // since it is then being used as an argument (or being bound), we
             // must package it into a closure so it can be used "lifted".
             //
-            // note that we assume these are arity-2 PrimOps - an assumption
-            // which likely will not hold in the future.
+            // if it is a nullary primop, we do not need to wrap it in a
+            // closure, and we don't.
             Expr::Prim(op) => {
-                let nm1 = es.fresh();
-                let nm2 = es.fresh();
-                let bd = app!(
-                    app!(Expr::Prim(op.clone()), Expr::Var(nm1.clone())),
-                    Expr::Var(nm2.clone())
-                );
-                let inner = lam!(nm2, bd);
-                VClosure(nm1, Box::new(inner), HashMap::new())
+                let fresh_names: Vec<Name> = iter::repeat_with(|| es.fresh())
+                    .take(primop_arity(op))
+                    .collect();
+
+                // create the inner lambda body, successively apply `op` to
+                // each fresh name.
+                let apply_vars = |acc, nm: &Name| app!(acc, Expr::Var(nm.clone()));
+                let app_body = fresh_names.iter().fold(Expr::Prim(op.clone()), apply_vars);
+
+                // create the full lambda, successively wrapping a lambda which
+                // binds each fresh name.
+                let wrap_lambda = |acc, nm| lam!(nm, acc);
+                let full_lam = fresh_names.into_iter().rev().fold(app_body, wrap_lambda);
+
+                // cheeky shortcut to repackage lambda into a `VClosure`, so we
+                // can retain generality / avoid special-casing on the outermost
+                // lambda.
+                eval(&full_lam)
             }
 
             Expr::App(fun, arg) => match eval_(env, es, fun) {
