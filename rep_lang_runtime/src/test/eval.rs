@@ -9,9 +9,12 @@ macro_rules! check_eval_expr {
                 } else {
                     match infer_expr(&Env::new(), &expr) {
                         Ok(_sc) => {
+                            let mut sto = Sto::new();
+                            let actual_ref = eval(&mut sto, &expr);
+                            let actual_val = lookup_sto(&actual_ref, &sto);
+                            let actual_flat_val = value_to_flat_value(actual_val, &sto);
                             assert_eq!(
-                                $expected_val,
-                                eval(&expr),
+                                $expected_val, actual_flat_val,
                                 "interpreted value differs from give expected value"
                             )
                         }
@@ -41,27 +44,33 @@ pub mod eval_unit {
 
     use crate::{
         env::*,
-        eval::{eval, Value, Value::*},
+        eval::{eval, lookup_sto, value_to_flat_value, FlatValue, Sto, Value, Value::*},
         infer::*,
         vcons,
     };
     use rep_lang_concrete_syntax::parse::expr;
 
     test_list![
-        (ex0, "1", VInt(1)),
-        (ex1, "(- (/ (* (+ 0 1) 6) 3) 2)", VInt(0)),
-        (ex2, "(((lam [x] x) (lam [x] x)) 9)", VInt(9)),
-        (ex3, "((lam [x] (if x 2 7)) (== 1 2))", VInt(7)),
+        (ex0, "1", FlatValue(VInt(1))),
+        (ex1, "(- (/ (* (+ 0 1) 6) 3) 2)", FlatValue(VInt(0))),
+        (ex2, "(((lam [x] x) (lam [x] x)) 9)", FlatValue(VInt(9))),
+        (ex3, "((lam [x] (if x 2 7)) (== 1 2))", FlatValue(VInt(7))),
         (
             ex4,
             r#"(let ([x (* 2 2)])
                  (cons x (cons 3 (cons 2 (cons 1 nil)))))"#,
             vcons!(
-                VInt(4),
-                vcons!(VInt(3), vcons!(VInt(2), vcons!(VInt(1), VNil)))
+                FlatValue(VInt(4)),
+                vcons!(
+                    FlatValue(VInt(3)),
+                    vcons!(
+                        FlatValue(VInt(2)),
+                        vcons!(FlatValue(VInt(1)), FlatValue(VNil))
+                    )
+                )
             )
         ),
-        (ex5, "true", VBool(true)),
+        (ex5, "true", FlatValue(VBool(true))),
         (
             ex6,
             r#"(let ([pr (pair 1 2)]
@@ -69,9 +78,9 @@ pub mod eval_unit {
                      [s snd])
                  (+ (f pr)
                     (s pr)))"#,
-            VInt(3)
+            FlatValue(VInt(3))
         ),
-        (ex8, "(null nil)", VBool(true)),
-        (ex7, "(null (cons 1 nil))", VBool(false)),
+        (ex8, "(null nil)", FlatValue(VBool(true))),
+        (ex7, "(null (cons 1 nil))", FlatValue(VBool(false))),
     ];
 }

@@ -5,7 +5,11 @@ use std::io::prelude::*;
 
 use rep_lang_concrete_syntax::{parse::program, util::pretty::to_pretty};
 
-use rep_lang_runtime::{env::Env, eval::eval_program, infer::infer_program};
+use rep_lang_runtime::{
+    env::Env,
+    eval::{eval_program, lookup_sto, ppr_value_ref},
+    infer::infer_program,
+};
 
 fn main() -> std::io::Result<()> {
     let width = 80;
@@ -25,8 +29,10 @@ fn main() -> std::io::Result<()> {
                     Ok((sc, env)) => {
                         println!("{:?}\n\n{:?}\n", sc, env);
                         let ty = to_pretty(sc.ppr(), width);
-                        let (val, _env) = eval_program(&prog);
-                        let val_str = to_pretty(val.ppr(), width);
+                        let (vr, _env, sto) = eval_program(&prog);
+                        let val = lookup_sto(&vr, &sto);
+                        let val_str = to_pretty(ppr_value_ref(val, &sto), width);
+                        println!("sto: {:?}\nsto len: {}\n", sto.sto_vec, sto.sto_vec.len());
                         println!("(: {}\n   {}\n)", val_str, ty);
                         Ok(())
                     }
