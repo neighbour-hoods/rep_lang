@@ -9,6 +9,7 @@ pub enum Expr {
     Let(Name, Box<Expr>, Box<Expr>),
     Lit(Lit),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
+    Fix(Box<Expr>),
     Prim(PrimOp),
 }
 
@@ -45,6 +46,8 @@ pub enum PrimOp {
     Snd,
     Cons,
     Nil,
+    Head,
+    Tail,
 }
 
 #[derive(Clone, Debug)]
@@ -71,5 +74,7 @@ pub fn primop_arity(op: &PrimOp) -> usize {
         PrimOp::Snd => 1,
         PrimOp::Cons => 2,
         PrimOp::Nil => 0,
+        PrimOp::Head => 1,
+        PrimOp::Tail => 1,
     }
 }

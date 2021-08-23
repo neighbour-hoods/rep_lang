@@ -42,6 +42,8 @@ where
         res_str("snd").map(|_| PrimOp::Snd),
         res_str("cons").map(|_| PrimOp::Cons),
         res_str("nil").map(|_| PrimOp::Nil),
+        res_str("head").map(|_| PrimOp::Head),
+        res_str("tail").map(|_| PrimOp::Tail),
     ))
     .map(Expr::Prim);
 
@@ -93,11 +95,14 @@ where
     let if_ = (res_str("if"), expr(), expr(), expr())
         .map(|t| Expr::If(Box::new(t.1), Box::new(t.2), Box::new(t.3)));
 
+    let fix = (res_str("fix"), expr()).map(|t| Expr::Fix(Box::new(t.1)));
+
     let parenthesized = choice((
         attempt(lam),
         attempt(let_),
         attempt(list),
         attempt(if_),
+        attempt(fix),
         app,
     ));
 
@@ -224,8 +229,8 @@ where
 
 pub fn reserved() -> Vec<String> {
     [
-        "let", "lam", "true", "false", "if", "null", "pair", "fst", "snd", "cons", "defn", "list",
-        "nil",
+        "let", "lam", "fix", "true", "false", "if", "null", "pair", "fst", "snd", "cons", "defn",
+        "list", "nil", "head", "tail",
     ]
     .iter()
     .map(|x| x.to_string())
