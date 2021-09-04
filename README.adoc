@@ -1,10 +1,10 @@
-= reputation language
+= `rep_lang`
 
 this repository consists of 3 crates at present:
 
-* rep_lang_core
-* rep_lang_concrete_syntax
-* rep_lang_runtime
+* `rep_lang_core`
+* `rep_lang_concrete_syntax`
+* `rep_lang_runtime`
 
 == building & running with `cargo`
 
@@ -41,3 +41,7 @@ $ ./result/bin/rli
 $ ./result/bin/rle $PATH_TO_INPUT
 < output >
 ----
+
+== developers
+
+see `DEVELOPING.adoc`.
