@@ -1,7 +1,9 @@
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Name(pub String);
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Expr {
     Var(Name),
     App(Box<Expr>, Box<Expr>),
@@ -27,13 +29,13 @@ macro_rules! lam {
     };
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Lit {
     LInt(i64),
     LBool(bool),
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrimOp {
     Add,
     Sub,
@@ -50,10 +52,10 @@ pub enum PrimOp {
     Tail,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Defn(pub Name, pub Expr);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Program {
     pub p_defns: Vec<Defn>,
     pub p_body: Expr,

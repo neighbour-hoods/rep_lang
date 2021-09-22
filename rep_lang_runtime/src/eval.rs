@@ -1,4 +1,5 @@
 use pretty::RcDoc;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
@@ -17,13 +18,13 @@ use StoCell::*;
 use Thunk::*;
 use Value::*;
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VRef(usize);
 
 // TODO assess whether deriving PartialEq is ok. I was manually implementing PartialEq so that it
 // closures would always be non-equal. I don't see we should do that instead of a regular check,
 // other than efficiency concerns.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Value<R> {
     VInt(i64),
     VBool(bool),
@@ -39,7 +40,7 @@ pub enum Thunk<R> {
     Ev(Value<R>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct FlatValue(pub Value<Box<FlatValue>>);
 
 #[derive(Debug, PartialEq)]

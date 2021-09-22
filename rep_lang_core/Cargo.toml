@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 quickcheck = "0.9.2"
 rand = "0.7"
+serde = "1.0"
