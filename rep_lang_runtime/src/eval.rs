@@ -12,6 +12,7 @@ use rep_lang_core::{
     util::calculate_hash,
 };
 
+use crate::fte;
 use StoCell::*;
 use Thunk::*;
 use Value::*;
@@ -41,8 +42,19 @@ pub struct FlatValue(pub Value<Box<FlatValue>>);
 #[derive(Debug, PartialEq)]
 pub struct FlatThunk(pub Thunk<Box<FlatThunk>>);
 
-pub fn inject_flatvalue_to_flatthunk(_val: FlatValue) -> FlatThunk {
-    todo!()
+pub fn inject_flatvalue_to_flatthunk(flat_val: FlatValue) -> FlatThunk {
+    let FlatValue(val) = flat_val;
+    match val {
+        VInt(x) => fte!(VInt(x)),
+        VBool(x) => fte!(VBool(x)),
+        VClosure(nm, bd, env) => fte!(VClosure(nm, bd, env)),
+        VNil => fte!(VNil),
+        VCons(x, y) | VPair(x, y) => {
+            let x_ft = inject_flatvalue_to_flatthunk(*x);
+            let y_ft = inject_flatvalue_to_flatthunk(*y);
+            fte!(VCons(Box::new(x_ft), Box::new(y_ft)))
+        }
+    }
 }
 
 // FlatThunk Ev
@@ -206,24 +218,28 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
 }
 
 pub fn value_to_flat_thunk(es: &mut EvalState, val: &Value<VRef>, sto: &mut Sto) -> FlatThunk {
+    inject_flatvalue_to_flatthunk(value_to_flat_value(es, val, sto))
+}
+
+pub fn value_to_flat_value(es: &mut EvalState, val: &Value<VRef>, sto: &mut Sto) -> FlatValue {
     match val {
-        VInt(x) => FlatThunk(Ev(VInt(*x))),
-        VBool(x) => FlatThunk(Ev(VBool(*x))),
-        VClosure(nm, bd, env) => FlatThunk(Ev(VClosure(nm.clone(), bd.clone(), env.clone()))),
+        VInt(x) => FlatValue(VInt(*x)),
+        VBool(x) => FlatValue(VBool(*x)),
+        VClosure(nm, bd, env) => FlatValue(VClosure(nm.clone(), bd.clone(), env.clone())),
         VCons(hd, tl) => {
             let hd_v = lookup_sto(es, hd, sto);
-            let hd_ = value_to_flat_thunk(es, &hd_v, sto);
+            let hd_ = value_to_flat_value(es, &hd_v, sto);
             let tl_v = lookup_sto(es, tl, sto);
-            let tl_ = value_to_flat_thunk(es, &tl_v, sto);
-            FlatThunk(Ev(VCons(Box::new(hd_), Box::new(tl_))))
+            let tl_ = value_to_flat_value(es, &tl_v, sto);
+            FlatValue(VCons(Box::new(hd_), Box::new(tl_)))
         }
-        VNil => FlatThunk(Ev(VNil)),
+        VNil => FlatValue(VNil),
         VPair(x, y) => {
             let x_v = lookup_sto(es, x, sto);
-            let x_ = value_to_flat_thunk(es, &x_v, sto);
+            let x_ = value_to_flat_value(es, &x_v, sto);
             let y_v = lookup_sto(es, y, sto);
-            let y_ = value_to_flat_thunk(es, &y_v, sto);
-            FlatThunk(Ev(VPair(Box::new(x_), Box::new(y_))))
+            let y_ = value_to_flat_value(es, &y_v, sto);
+            FlatValue(VPair(Box::new(x_), Box::new(y_)))
         }
     }
 }
