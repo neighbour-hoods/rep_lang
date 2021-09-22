@@ -20,7 +20,10 @@ use Value::*;
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct VRef(usize);
 
-#[derive(Clone, Debug, Eq, Hash)]
+// TODO assess whether deriving PartialEq is ok. I was manually implementing PartialEq so that it
+// closures would always be non-equal. I don't see we should do that instead of a regular check,
+// other than efficiency concerns.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Value<R> {
     VInt(i64),
     VBool(bool),
@@ -70,19 +73,6 @@ macro_rules! vcons {
     ( $a: expr, $b: expr ) => {
         FlatThunk(Thunk::Ev(Value::VCons(Box::new($a), Box::new($b))))
     };
-}
-
-impl<R: PartialEq> PartialEq for Value<R> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (VInt(i1), VInt(i2)) => i1 == i2,
-            (VBool(b1), VBool(b2)) => b1 == b2,
-            (VCons(x1, l1), VCons(x2, l2)) => x1 == x2 && l1 == l2,
-            (VNil, VNil) => true,
-            (VPair(x1, y1), VPair(x2, y2)) => x1 == x2 && y1 == y2,
-            (_, _) => false,
-        }
-    }
 }
 
 impl<R: PartialEq> PartialEq for Thunk<R> {
