@@ -77,6 +77,7 @@ macro_rules! vcons {
 }
 
 impl<M, R> PartialEq for Thunk<M, R>
+where
     M: PartialEq,
     R: PartialEq,
 {
@@ -89,6 +90,7 @@ impl<M, R> PartialEq for Thunk<M, R>
 }
 
 impl<M, R> fmt::Debug for Thunk<M, R>
+where
     M: fmt::Debug,
     R: fmt::Debug,
 {
@@ -138,7 +140,7 @@ pub struct Sto<M> {
     pub sto_unev_map: HashMap<u64, usize>,
 }
 
-impl Sto<M> {
+impl<M> Sto<M> {
     pub fn new() -> Sto<M> {
         Sto {
             sto_vec: Vec::new(),
@@ -148,7 +150,7 @@ impl Sto<M> {
     }
 }
 
-impl Default for Sto<M> {
+impl<M> Default for Sto<M> {
     fn default() -> Self {
         Self::new()
     }
@@ -156,7 +158,7 @@ impl Default for Sto<M> {
 
 // TODO this likely performs significant amounts of cloning. however, it's
 // possible this is approximately the minimal amount of cloning possible.
-pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> Value<VRef> {
+pub fn lookup_sto<'a, M>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> Value<VRef> {
     let VRef(idx) = *vr;
     match sto.sto_vec.get_mut(idx) {
         None => panic!("lookup_sto: out of bounds"),
@@ -171,14 +173,14 @@ pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> Val
                 sto.sto_vec[idx] = CellRedirect(vr2);
                 val
             }
-            Marker(m) => {
+            Marker(_m) => {
                 todo!("call the oracle here")
             }
         },
     }
 }
 
-pub fn add_to_sto(thnk: Thunk<M, VRef>, sto: &mut Sto<M>) -> VRef {
+pub fn add_to_sto<M>(thnk: Thunk<M, VRef>, sto: &mut Sto<M>) -> VRef {
     match thnk {
         Ev(ref val) => {
             let hash = calculate_hash(&val);
@@ -212,7 +214,11 @@ pub fn add_to_sto(thnk: Thunk<M, VRef>, sto: &mut Sto<M>) -> VRef {
     }
 }
 
-pub fn value_to_flat_value(es: &mut EvalState, val: &Value<VRef>, sto: &mut Sto<M>) -> FlatValue {
+pub fn value_to_flat_value<M>(
+    es: &mut EvalState,
+    val: &Value<VRef>,
+    sto: &mut Sto<M>,
+) -> FlatValue {
     match val {
         VInt(x) => FlatValue(VInt(*x)),
         VBool(x) => FlatValue(VBool(*x)),
@@ -235,7 +241,11 @@ pub fn value_to_flat_value(es: &mut EvalState, val: &Value<VRef>, sto: &mut Sto<
     }
 }
 
-pub fn flat_thunk_to_sto_ref(es: &mut EvalState, sto: &mut Sto<M>, flat_thunk: FlatThunk<M>) -> VRef {
+pub fn flat_thunk_to_sto_ref<M>(
+    es: &mut EvalState,
+    sto: &mut Sto<M>,
+    flat_thunk: FlatThunk<M>,
+) -> VRef {
     let FlatThunk(thunk) = flat_thunk;
     match thunk {
         UnevExpr(expr, env) => add_to_sto(UnevExpr(expr, env), sto),
@@ -344,20 +354,25 @@ impl Default for EvalState {
     }
 }
 
-pub fn eval_defn(env: &mut TermEnv, sto: &mut Sto<M>, es: &mut EvalState, defn: &Defn) {
+pub fn eval_defn<M>(env: &mut TermEnv, sto: &mut Sto<M>, es: &mut EvalState, defn: &Defn) {
     let Defn(nm, bd) = defn;
     let vr = eval_(env, sto, es, bd);
     env.insert(nm.clone(), vr);
 }
 
-pub fn eval_program(env: &mut TermEnv, sto: &mut Sto<M>, es: &mut EvalState, prog: &Program) -> VRef {
+pub fn eval_program<M>(
+    env: &mut TermEnv,
+    sto: &mut Sto<M>,
+    es: &mut EvalState,
+    prog: &Program,
+) -> VRef {
     for defn in prog.p_defns.iter() {
         eval_defn(env, sto, es, defn);
     }
     eval_(env, sto, es, &prog.p_body)
 }
 
-pub fn eval(sto: &mut Sto<M>, expr: &Expr) -> VRef {
+pub fn eval<M>(sto: &mut Sto<M>, expr: &Expr) -> VRef {
     let env = new_term_env();
     let mut es = EvalState::new();
     eval_(&env, sto, &mut es, expr)
@@ -375,7 +390,7 @@ macro_rules! primop_binop_int {
     };
 }
 
-pub fn eval_(env: &TermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Expr) -> VRef {
+pub fn eval_<M>(env: &TermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Expr) -> VRef {
     match primop_apply_case(es, expr) {
         // in this case we directly interpret the PrimOp.
         PrimOpApplyCase::FullyApplied(op, args) => {

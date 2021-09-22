@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
                         let ty = to_pretty(sc.ppr(), width);
                         let mut env = new_term_env();
                         let mut es = EvalState::new();
-                        let mut sto = Sto::new();
+                        let mut sto = Sto::<()>::new();
                         let vr = eval_program(&mut env, &mut sto, &mut es, &prog);
                         let val = lookup_sto(&mut es, &vr, &mut sto);
                         let result_flat_value = value_to_flat_value(&mut es, &val, &mut sto);

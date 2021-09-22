@@ -34,7 +34,7 @@ fn main() {
     };
     let mut type_env = Env::new();
     let mut term_env = new_term_env();
-    let mut sto = Sto::new();
+    let mut sto = Sto::<()>::new();
     let mut es = EvalState::new();
     loop {
         let readline = rl.readline("> ");
