@@ -40,7 +40,7 @@ fn main() -> std::io::Result<()> {
                                   (tail xs)))))))
                          (defn length (foldl (lam [acc x] (+ 1 acc)) 0))
                          1"#;
-    let prog_prog = match program().easy_parse(position::Stream::new(&dummy_prog[..])) {
+    let prog_prog = match program().easy_parse(position::Stream::new(dummy_prog)) {
         Err(err) => panic!("parse error:\n\n{}\n", err),
         Ok((prog, extra_input)) => {
             if extra_input.is_partial() {
