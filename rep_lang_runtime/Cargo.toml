@@ -12,6 +12,8 @@ byteorder = "1.4.3"
 combine = "4.5.2"
 pretty = "0.10.0"
 rustyline = "6.3.0"
+serde = "1.0"
+
 rep_lang_core = { path = "../rep_lang_core" }
 rep_lang_concrete_syntax = { path = "../rep_lang_concrete_syntax" }
 
