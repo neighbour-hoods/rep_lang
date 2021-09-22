@@ -9,7 +9,7 @@ use rep_lang_core::{
 use rep_lang_runtime::{
     env::Env,
     eval::{
-        add_to_sto, eval_program, lookup_sto, new_term_env, value_to_flat_thunk, EvalState, Sto,
+        add_to_sto, eval_program, lookup_sto, new_term_env, value_to_flat_value, EvalState, Sto,
     },
     infer::infer_program,
     thunk_util::file_byte_to_flat_thunk_list,
@@ -65,8 +65,8 @@ fn main() -> std::io::Result<()> {
 
     let prog_val = lookup_sto(&mut es, &prog_vr, &mut sto);
 
-    let result_flat_thunk = value_to_flat_thunk(&mut es, &prog_val, &mut sto);
-    let val_str = to_pretty(result_flat_thunk.ppr(), width);
+    let result_flat_value = value_to_flat_value(&mut es, &prog_val, &mut sto);
+    let val_str = to_pretty(result_flat_value.ppr(), width);
     println!("sto: [");
     for (idx, elem) in sto.sto_vec.iter().enumerate() {
         println!("\t{} : {:?}", idx, elem);

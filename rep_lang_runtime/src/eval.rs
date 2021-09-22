@@ -217,10 +217,6 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
     }
 }
 
-pub fn value_to_flat_thunk(es: &mut EvalState, val: &Value<VRef>, sto: &mut Sto) -> FlatThunk {
-    inject_flatvalue_to_flatthunk(value_to_flat_value(es, val, sto))
-}
-
 pub fn value_to_flat_value(es: &mut EvalState, val: &Value<VRef>, sto: &mut Sto) -> FlatValue {
     match val {
         VInt(x) => FlatValue(VInt(*x)),
@@ -274,25 +270,23 @@ pub fn flat_thunk_to_sto_ref(es: &mut EvalState, sto: &mut Sto, flat_thunk: Flat
     }
 }
 
-impl FlatThunk {
+impl FlatValue {
     pub fn ppr(&self) -> RcDoc<()> {
-        match self {
-            FlatThunk(Ev(val)) => match val {
-                VInt(n) => RcDoc::as_string(n),
-                VBool(true) => RcDoc::text("true"),
-                VBool(false) => RcDoc::text("false"),
-                VClosure(_, _, _) => RcDoc::text("<<closure>>"),
-                VCons(hd, tl) => parens(
-                    RcDoc::text("cons")
-                        .append(sp!())
-                        .append(hd.ppr())
-                        .append(sp!())
-                        .append(tl.ppr()),
-                ),
-                VNil => RcDoc::text("nil"),
-                VPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
-            },
-            _ => panic!("ppr: FlatThunk: unforced thunk"),
+        let FlatValue(val) = self;
+        match val {
+            VInt(n) => RcDoc::as_string(n),
+            VBool(true) => RcDoc::text("true"),
+            VBool(false) => RcDoc::text("false"),
+            VClosure(_, _, _) => RcDoc::text("<<closure>>"),
+            VCons(hd, tl) => parens(
+                RcDoc::text("cons")
+                    .append(sp!())
+                    .append(hd.ppr())
+                    .append(sp!())
+                    .append(tl.ppr()),
+            ),
+            VNil => RcDoc::text("nil"),
+            VPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
         }
     }
 }
