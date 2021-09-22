@@ -36,7 +36,14 @@ pub enum Thunk<R> {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct FlatValue(pub Value<Box<FlatValue>>);
+
+#[derive(Debug, PartialEq)]
 pub struct FlatThunk(pub Thunk<Box<FlatThunk>>);
+
+pub fn inject_flatvalue_to_flatthunk(val: FlatValue) -> FlatThunk {
+    todo!()
+}
 
 // FlatThunk Ev
 #[macro_export]
