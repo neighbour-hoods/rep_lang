@@ -6,7 +6,7 @@ use rep_lang_core::abstract_syntax::Defn;
 
 use rep_lang_runtime::{
     env::*,
-    eval::{eval_, lookup_sto, new_term_env, value_to_flat_thunk, EvalState, Sto},
+    eval::{eval_, lookup_sto, new_term_env, value_to_flat_value, EvalState, Sto},
     infer::*,
 };
 
@@ -55,9 +55,9 @@ fn main() {
                                     type_env.extend(nm.clone(), sc);
                                     let vr = eval_(&term_env, &mut sto, &mut es, &e);
                                     let val = lookup_sto(&mut es, &vr, &mut sto);
-                                    let result_flat_thunk =
-                                        value_to_flat_thunk(&mut es, &val, &mut sto);
-                                    let val_str = to_pretty(result_flat_thunk.ppr(), width);
+                                    let result_flat_value =
+                                        value_to_flat_value(&mut es, &val, &mut sto);
+                                    let val_str = to_pretty(result_flat_value.ppr(), width);
                                     term_env.insert(nm, vr);
                                     println!("(: {}\n   {}\n)", val_str, ty);
                                 }
