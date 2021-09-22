@@ -1,11 +1,12 @@
 use pretty::RcDoc;
+use serde::{Deserialize, Serialize};
 
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Tv(pub String);
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Type {
     TVar(Tv),
     TCon(String),
