@@ -40,7 +40,7 @@ pub enum Thunk<M, R> {
     Ev(Value<R>),
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FlatValue(pub Value<Box<FlatValue>>);
 
 #[derive(Debug, PartialEq)]
