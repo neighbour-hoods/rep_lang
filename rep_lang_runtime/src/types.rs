@@ -15,7 +15,7 @@ pub enum Type {
     TPair(Box<Type>, Box<Type>),
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Scheme(pub Vec<Tv>, pub Type);
 
 // type constructors
