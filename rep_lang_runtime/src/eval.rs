@@ -25,28 +25,32 @@ pub struct VRef(usize);
 // closures would always be non-equal. I don't see we should do that instead of a regular check,
 // other than efficiency concerns.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Value<R> {
+pub enum Value<R, CR> {
     VInt(i64),
     VBool(bool),
-    VClosure(Name, Box<Expr>, TermEnv),
+    VClosure(Name, Box<Expr>, TermEnv<CR>),
     VCons(R, R),
     VNil,
     VPair(R, R),
 }
 
-pub enum Thunk<M, R> {
-    UnevExpr(Expr, TermEnv),
+#[derive(Clone, Serialize, Deserialize)]
+pub enum Thunk<M, R, CR> {
+    UnevExpr(Expr, TermEnv<CR>),
     Marker(M),
-    Ev(Value<R>),
+    Ev(Value<R, CR>),
 }
 
+type IThunk<M> = Thunk<M, VRef, VRef>;
+type IValue = Value<VRef, VRef>;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct FlatValue(pub Value<Box<FlatValue>>);
+pub struct FlatValue<M>(pub Value<Box<FlatValue<M>>, FlatThunk<M>>);
 
-#[derive(Debug, PartialEq)]
-pub struct FlatThunk<M>(pub Thunk<M, Box<FlatThunk<M>>>);
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FlatThunk<M>(pub Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>>);
 
-pub fn inject_flatvalue_to_flatthunk<M>(flat_val: FlatValue) -> FlatThunk<M> {
+pub fn inject_flatvalue_to_flatthunk<M>(flat_val: FlatValue<M>) -> FlatThunk<M> {
     let FlatValue(val) = flat_val;
     match val {
         VInt(x) => fte!(VInt(x)),
@@ -76,10 +80,11 @@ macro_rules! vcons {
     };
 }
 
-impl<M, R> PartialEq for Thunk<M, R>
+impl<M, R, CR> PartialEq for Thunk<M, R, CR>
 where
     M: PartialEq,
     R: PartialEq,
+    CR: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -89,10 +94,11 @@ where
     }
 }
 
-impl<M, R> fmt::Debug for Thunk<M, R>
+impl<M, R, CR> fmt::Debug for Thunk<M, R, CR>
 where
     M: fmt::Debug,
     R: fmt::Debug,
+    CR: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -107,15 +113,16 @@ where
     }
 }
 
-type TermEnv = BTreeMap<Name, VRef>;
+type TermEnv<V> = BTreeMap<Name, V>;
+type ITermEnv = TermEnv<VRef>;
 
-pub fn new_term_env() -> TermEnv {
+pub fn new_term_env<V>() -> TermEnv<V> {
     BTreeMap::new()
 }
 
 #[derive(Debug)]
 pub enum StoCell<M> {
-    CellThunk(Thunk<M, VRef>),
+    CellThunk(IThunk<M>),
     CellRedirect(VRef),
 }
 
@@ -158,7 +165,7 @@ impl<M> Default for Sto<M> {
 
 // TODO this likely performs significant amounts of cloning. however, it's
 // possible this is approximately the minimal amount of cloning possible.
-pub fn lookup_sto<'a, M>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> Value<VRef> {
+pub fn lookup_sto<'a, M>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> IValue {
     let VRef(idx) = *vr;
     match sto.sto_vec.get_mut(idx) {
         None => panic!("lookup_sto: out of bounds"),
@@ -180,7 +187,7 @@ pub fn lookup_sto<'a, M>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> 
     }
 }
 
-pub fn add_to_sto<M>(thnk: Thunk<M, VRef>, sto: &mut Sto<M>) -> VRef {
+pub fn add_to_sto<M>(thnk: IThunk<M>, sto: &mut Sto<M>) -> VRef {
     match thnk {
         Ev(ref val) => {
             let hash = calculate_hash(&val);
@@ -214,11 +221,7 @@ pub fn add_to_sto<M>(thnk: Thunk<M, VRef>, sto: &mut Sto<M>) -> VRef {
     }
 }
 
-pub fn value_to_flat_value<M>(
-    es: &mut EvalState,
-    val: &Value<VRef>,
-    sto: &mut Sto<M>,
-) -> FlatValue {
+pub fn value_to_flat_value<M>(es: &mut EvalState, val: &IValue, sto: &mut Sto<M>) -> FlatValue<M> {
     match val {
         VInt(x) => FlatValue(VInt(*x)),
         VBool(x) => FlatValue(VBool(*x)),
@@ -275,7 +278,7 @@ pub fn flat_thunk_to_sto_ref<M>(
     }
 }
 
-impl FlatValue {
+impl<M> FlatValue<M> {
     pub fn ppr(&self) -> RcDoc<()> {
         let FlatValue(val) = self;
         match val {
@@ -354,14 +357,14 @@ impl Default for EvalState {
     }
 }
 
-pub fn eval_defn<M>(env: &mut TermEnv, sto: &mut Sto<M>, es: &mut EvalState, defn: &Defn) {
+pub fn eval_defn<M>(env: &mut ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, defn: &Defn) {
     let Defn(nm, bd) = defn;
     let vr = eval_(env, sto, es, bd);
     env.insert(nm.clone(), vr);
 }
 
 pub fn eval_program<M>(
-    env: &mut TermEnv,
+    env: &mut ITermEnv,
     sto: &mut Sto<M>,
     es: &mut EvalState,
     prog: &Program,
@@ -390,7 +393,7 @@ macro_rules! primop_binop_int {
     };
 }
 
-pub fn eval_<M>(env: &TermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Expr) -> VRef {
+pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Expr) -> VRef {
     match primop_apply_case(es, expr) {
         // in this case we directly interpret the PrimOp.
         PrimOpApplyCase::FullyApplied(op, args) => {
