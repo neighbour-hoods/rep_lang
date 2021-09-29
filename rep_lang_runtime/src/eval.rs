@@ -663,3 +663,19 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
         }
     }
 }
+
+pub fn normalize_flat_value<M>(es: &mut EvalState, flat_val: &FlatValue<M>) -> FlatValue<M> {
+    let FlatValue(val) = flat_val;
+    FlatValue(normalize_value(es, val))
+}
+
+pub fn normalize_value<M>(
+    _es: &mut EvalState,
+    _val: &Value<Box<FlatValue<M>>, FlatThunk<M>>,
+) -> Value<Box<FlatValue<M>>, FlatThunk<M>> {
+    todo!()
+}
+
+pub fn normalize_expr(_es: &mut EvalState, _val: &Expr) -> Expr {
+    todo!()
+}

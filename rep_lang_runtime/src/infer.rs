@@ -254,7 +254,8 @@ pub fn infer_program_with_is(
         let sc = infer_expr(&env, expr)?;
         env.extend(name.clone(), sc);
     }
-    let (sc, is) = infer_expr_with_is(&env, &prog.p_body)?;
+    let mut is = InferState::new();
+    let sc = infer_expr_with_is(&env, &mut is, &prog.p_body)?;
     Ok((sc, env, is))
 }
 
@@ -267,11 +268,14 @@ pub fn infer_program(mut env: Env, prog: &Program) -> Result<(Scheme, Env), Type
     Ok((sc, env))
 }
 
-fn infer_expr_with_is(env: &Env, expr: &Expr) -> Result<(Scheme, InferState), TypeError> {
-    let mut is = InferState::new();
-    let (ty, csts) = infer(env, &mut is, expr)?;
+pub fn infer_expr_with_is(
+    env: &Env,
+    is: &mut InferState,
+    expr: &Expr,
+) -> Result<Scheme, TypeError> {
+    let (ty, csts) = infer(env, is, expr)?;
     let subst = run_solve(csts)?;
-    Ok((close_over(ty.apply(&subst)), is))
+    Ok(close_over(ty.apply(&subst)))
 }
 
 pub fn infer_expr(env: &Env, expr: &Expr) -> Result<Scheme, TypeError> {
