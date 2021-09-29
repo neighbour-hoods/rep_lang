@@ -187,6 +187,18 @@ pub fn lookup_sto<'a, M>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> 
     }
 }
 
+pub fn get_sto<'a, M>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> IThunk<M>
+where
+    M: Clone,
+{
+    let VRef(idx) = *vr;
+    match sto.sto_vec.get_mut(idx) {
+        None => panic!("lookup_sto: out of bounds"),
+        Some(CellRedirect(vr2)) => get_sto(es, &vr2.clone(), sto),
+        Some(CellThunk(thnk)) => thnk.clone(),
+    }
+}
+
 pub fn add_to_sto<M>(thnk: IThunk<M>, sto: &mut Sto<M>) -> VRef {
     match thnk {
         Ev(ref val) => {
@@ -221,11 +233,45 @@ pub fn add_to_sto<M>(thnk: IThunk<M>, sto: &mut Sto<M>) -> VRef {
     }
 }
 
-pub fn value_to_flat_value<M>(es: &mut EvalState, val: &IValue, sto: &mut Sto<M>) -> FlatValue<M> {
+pub fn thunk_to_flat_thunk<M>(
+    es: &mut EvalState,
+    thnk: &IThunk<M>,
+    sto: &mut Sto<M>,
+) -> FlatThunk<M>
+where
+    M: Clone,
+{
+    match thnk {
+        Ev(val) => inject_flatvalue_to_flatthunk(value_to_flat_value(es, val, sto)),
+        UnevExpr(expr, env) => {
+            let mut new_env: TermEnv<FlatThunk<M>> = new_term_env();
+            for (nm, vr) in env {
+                let thnk = get_sto(es, vr, sto);
+                let flat_thnk = thunk_to_flat_thunk(es, &thnk, sto);
+                new_env.insert(nm.clone(), flat_thnk);
+            }
+            FlatThunk(UnevExpr(expr.clone(), new_env))
+        }
+        Marker(m) => FlatThunk(Marker(m.clone())),
+    }
+}
+
+pub fn value_to_flat_value<M>(es: &mut EvalState, val: &IValue, sto: &mut Sto<M>) -> FlatValue<M>
+where
+    M: Clone,
+{
     match val {
         VInt(x) => FlatValue(VInt(*x)),
         VBool(x) => FlatValue(VBool(*x)),
-        VClosure(nm, bd, env) => FlatValue(VClosure(nm.clone(), bd.clone(), env.clone())),
+        VClosure(nm, bd, env) => {
+            let mut new_env: TermEnv<FlatThunk<M>> = new_term_env();
+            for (nm, vr) in env {
+                let thnk = get_sto(es, vr, sto);
+                let flat_thnk = thunk_to_flat_thunk(es, &thnk, sto);
+                new_env.insert(nm.clone(), flat_thnk);
+            }
+            FlatValue(VClosure(nm.clone(), bd.clone(), new_env))
+        }
         VCons(hd, tl) => {
             let hd_v = lookup_sto(es, hd, sto);
             let hd_ = value_to_flat_value(es, &hd_v, sto);
@@ -251,7 +297,14 @@ pub fn flat_thunk_to_sto_ref<M>(
 ) -> VRef {
     let FlatThunk(thunk) = flat_thunk;
     match thunk {
-        UnevExpr(expr, env) => add_to_sto(UnevExpr(expr, env), sto),
+        UnevExpr(expr, env) => {
+            let mut new_env: TermEnv<VRef> = new_term_env();
+            for (nm, f_t) in env {
+                let vr = flat_thunk_to_sto_ref(es, sto, f_t);
+                new_env.insert(nm.clone(), vr);
+            }
+            add_to_sto(UnevExpr(expr, new_env), sto)
+        }
         Marker(m) => add_to_sto(Marker(m), sto),
         Ev(val) => {
             let new_val = match val {
@@ -270,7 +323,14 @@ pub fn flat_thunk_to_sto_ref<M>(
                 // necessary in order to recast the structs with a different `<R>`.
                 VInt(x) => VInt(x),
                 VBool(x) => VBool(x),
-                VClosure(nm, bd, env) => VClosure(nm, bd, env),
+                VClosure(nm, bd, env) => {
+                    let mut new_env: TermEnv<VRef> = new_term_env();
+                    for (nm, f_t) in env {
+                        let vr = flat_thunk_to_sto_ref(es, sto, f_t);
+                        new_env.insert(nm.clone(), vr);
+                    }
+                    VClosure(nm, bd, new_env)
+                }
                 VNil => VNil,
             };
             add_to_sto(Ev(new_val), sto)
