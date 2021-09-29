@@ -294,16 +294,16 @@ pub fn constraints_expr(
 }
 
 fn close_over(ty: Type) -> Scheme {
-    normalize(generalize(Env::new(), ty))
+    let mut is = InferState::new();
+    normalize(&mut is, generalize(Env::new(), ty))
 }
 
-fn normalize(sc: Scheme) -> Scheme {
+pub fn normalize(is: &mut InferState, sc: Scheme) -> Scheme {
     let Scheme(_, body) = sc;
     let hm = {
         let mut vars: Vec<Tv> = free_type_vars(body.clone()).collect();
         vars.dedup();
         let mut hm = HashMap::new();
-        let mut is = InferState::new();
         for var in vars {
             hm.insert(var, is.fresh_tv());
         }
