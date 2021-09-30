@@ -392,20 +392,20 @@ impl<M> FlatValue<M> {
 //     }
 // }
 
-pub struct EvalState(u64);
+pub struct EvalState {
+    fresh_name_counter: u64,
+}
 
 impl EvalState {
     pub fn new() -> EvalState {
-        EvalState(0)
+        EvalState {
+            fresh_name_counter: 0,
+        }
     }
 
-    pub fn fresh(&mut self) -> Name {
-        let cnt = match self {
-            EvalState(c) => {
-                *c += 1;
-                *c
-            }
-        };
+    pub fn fresh_name(&mut self) -> Name {
+        let cnt = self.fresh_name_counter;
+        self.fresh_name_counter += 1;
         let s = format!("_{}", cnt);
         Name(s)
     }
@@ -558,7 +558,8 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
             Expr::Prim(op) => {
                 let arity = primop_arity(op);
                 assert_ne!(arity, 0, "unhandled nullary primop");
-                let fresh_names: Vec<Name> = iter::repeat_with(|| es.fresh()).take(arity).collect();
+                let fresh_names: Vec<Name> =
+                    iter::repeat_with(|| es.fresh_name()).take(arity).collect();
 
                 // create the inner lambda body, successively apply `op` to
                 // each fresh name.
@@ -643,7 +644,8 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
                 // not fully applied
                 Ordering::Greater => {
                     // generate fresh names for the args which have not been applied
-                    let names: Vec<Name> = iter::repeat_with(|| es.fresh()).take(delta).collect();
+                    let names: Vec<Name> =
+                        iter::repeat_with(|| es.fresh_name()).take(delta).collect();
                     // wrap said fresh names into `Expr`s
                     let name_vars = names.clone().into_iter().map(Expr::Var);
                     // iterator which runs through the provided arguments, adding the fresh names
