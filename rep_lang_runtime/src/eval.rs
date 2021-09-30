@@ -14,6 +14,7 @@ use rep_lang_core::{
 };
 
 use crate::fte;
+use Expr::*;
 use StoCell::*;
 use Thunk::*;
 use Value::*;
@@ -677,18 +678,105 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
     }
 }
 
-pub fn normalize_flat_value<M>(es: &mut EvalState, flat_val: &FlatValue<M>) -> FlatValue<M> {
+pub fn normalize_flat_thunk<M: Clone>(
+    hm: &mut HashMap<Name, Name>,
+    es: &mut EvalState,
+    flat_thunk: &FlatThunk<M>,
+) -> FlatThunk<M> {
+    let FlatThunk(thunk) = flat_thunk;
+    FlatThunk(normalize_thunk(hm, es, thunk))
+}
+
+pub fn normalize_thunk<M: Clone>(
+    hm: &mut HashMap<Name, Name>,
+    es: &mut EvalState,
+    thunk: &Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>>,
+) -> Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>> {
+    todo!()
+}
+
+pub fn normalize_flat_value<M: Clone>(
+    hm: &mut HashMap<Name, Name>,
+    es: &mut EvalState,
+    flat_val: &FlatValue<M>,
+) -> FlatValue<M> {
     let FlatValue(val) = flat_val;
-    FlatValue(normalize_value(es, val))
+    FlatValue(normalize_value(hm, es, val))
 }
 
-pub fn normalize_value<M>(
-    _es: &mut EvalState,
-    _val: &Value<Box<FlatValue<M>>, FlatThunk<M>>,
+pub fn normalize_value<M: Clone>(
+    hm: &mut HashMap<Name, Name>,
+    es: &mut EvalState,
+    val: &Value<Box<FlatValue<M>>, FlatThunk<M>>,
 ) -> Value<Box<FlatValue<M>>, FlatThunk<M>> {
-    todo!()
+    match val {
+        VInt(_) | VBool(_) | VNil => (*val).clone(),
+        VClosure(nm, bd, env) => {
+            // TODO verify this is right
+            let env_norm = env
+                .iter()
+                .map(|(nm_env, flat_thunk)| {
+                    let nm_env_norm = es.fresh_name();
+                    hm.insert(nm_env.clone(), nm_env_norm.clone());
+                    (nm_env_norm, normalize_flat_thunk(hm, es, &flat_thunk))
+                })
+                .collect();
+            // INFO `bd` after `env`, so that vars in `bd` (which refer to `env`) get mapped right.
+            let nm_norm = es.fresh_name();
+            hm.insert(nm.clone(), nm_norm.clone());
+            let bd_norm = Box::new(normalize_expr(hm, es, &bd));
+            VClosure(nm_norm, bd_norm, env_norm)
+        }
+        VCons(x, y) => {
+            let x_norm = Box::new(normalize_flat_value(hm, es, &x));
+            let y_norm = Box::new(normalize_flat_value(hm, es, &y));
+            VCons(x_norm, y_norm)
+        }
+        VPair(x, y) => {
+            let x_norm = Box::new(normalize_flat_value(hm, es, &x));
+            let y_norm = Box::new(normalize_flat_value(hm, es, &y));
+            VPair(x_norm, y_norm)
+        }
+    }
 }
 
-pub fn normalize_expr(_es: &mut EvalState, _val: &Expr) -> Expr {
-    todo!()
+pub fn normalize_expr(hm: &mut HashMap<Name, Name>, es: &mut EvalState, expr: &Expr) -> Expr {
+    match expr {
+        Lit(_) | Prim(_) => expr.clone(),
+
+        Var(x) => match hm.get(&x) {
+            None => panic!("normalize_expr: free variable: {:?}", x),
+            Some(v) => Var(v.clone()),
+        },
+
+        Lam(nm, bd) => {
+            let nm_norm = es.fresh_name();
+            hm.insert(nm.clone(), nm_norm.clone());
+            let bd_norm = Box::new(normalize_expr(hm, es, &bd));
+            Lam(nm_norm, bd_norm)
+        }
+
+        Let(nm, e, bd) => {
+            let nm_norm = es.fresh_name();
+            hm.insert(nm.clone(), nm_norm.clone());
+            let e_norm = Box::new(normalize_expr(hm, es, &e));
+            let bd_norm = Box::new(normalize_expr(hm, es, &bd));
+            Let(nm_norm, e_norm, bd_norm)
+        }
+
+        If(tst, thn, els) => {
+            let tst_norm = Box::new(normalize_expr(hm, es, &tst));
+            let thn_norm = Box::new(normalize_expr(hm, es, &thn));
+            let els_norm = Box::new(normalize_expr(hm, es, &els));
+            If(tst_norm, thn_norm, els_norm)
+        }
+
+        App(fun, arg) => {
+            let fun_norm = Box::new(normalize_expr(hm, es, &fun));
+            let arg_norm = Box::new(normalize_expr(hm, es, &arg));
+            App(fun_norm, arg_norm)
+        }
+
+        Fix(e) => Fix(Box::new(normalize_expr(hm, es, &e))),
+    }
 }
