@@ -678,120 +678,138 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
     }
 }
 
-pub fn normalize_flat_thunk<M: Clone>(
-    hm: &mut HashMap<Name, Name>,
-    es: &mut EvalState,
-    flat_thunk: &FlatThunk<M>,
-) -> FlatThunk<M> {
-    let FlatThunk(thunk) = flat_thunk;
-    FlatThunk(normalize_thunk(hm, es, thunk))
+pub trait Normalizable {
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self;
 }
 
-pub fn normalize_thunk<M: Clone>(
-    hm: &mut HashMap<Name, Name>,
-    es: &mut EvalState,
-    thunk: &Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>>,
-) -> Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>> {
-    match thunk {
-        Ev(val) => Ev(normalize_value(hm, es, val)),
-        UnevExpr(expr, env) => {
-            let expr_norm = normalize_expr(hm, es, expr);
-            let env_norm = normalize_term_env(hm, es, env);
-            UnevExpr(expr_norm, env_norm)
-        }
-        Marker(m) => Marker(m.clone()),
+impl<M> Normalizable for FlatThunk<M>
+where
+    M: Clone,
+{
+    fn normalize(
+        self: &FlatThunk<M>,
+        hm: &mut HashMap<Name, Name>,
+        es: &mut EvalState,
+    ) -> FlatThunk<M> {
+        let FlatThunk(thunk) = self;
+        FlatThunk(thunk.normalize(hm, es))
     }
 }
 
-pub fn normalize_term_env<CR>(
-    hm: &mut HashMap<Name, Name>,
-    es: &mut EvalState,
-    env: TermEnv<CR>,
-) -> TermEnv<CR> {
-    env.iter()
-        .map(|(nm_env, flat_thunk)| {
-            let nm_env_norm = es.fresh_name();
-            hm.insert(nm_env.clone(), nm_env_norm.clone());
-            (nm_env_norm, normalize_flat_thunk(hm, es, &flat_thunk))
-        })
-        .collect()
-}
-
-pub fn normalize_flat_value<M: Clone>(
-    hm: &mut HashMap<Name, Name>,
-    es: &mut EvalState,
-    flat_val: &FlatValue<M>,
-) -> FlatValue<M> {
-    let FlatValue(val) = flat_val;
-    FlatValue(normalize_value(hm, es, val))
-}
-
-pub fn normalize_value<M: Clone>(
-    hm: &mut HashMap<Name, Name>,
-    es: &mut EvalState,
-    val: &Value<Box<FlatValue<M>>, FlatThunk<M>>,
-) -> Value<Box<FlatValue<M>>, FlatThunk<M>> {
-    match val {
-        VInt(_) | VBool(_) | VNil => (*val).clone(),
-        VClosure(nm, bd, env) => {
-            // TODO verify this is right
-            let env_norm = normalize_term_env(hm, es, env);
-            // INFO `bd` after `env`, so that vars in `bd` (which refer to `env`) get mapped right.
-            let nm_norm = es.fresh_name();
-            hm.insert(nm.clone(), nm_norm.clone());
-            let bd_norm = Box::new(normalize_expr(hm, es, &bd));
-            VClosure(nm_norm, bd_norm, env_norm)
-        }
-        VCons(x, y) => {
-            let x_norm = Box::new(normalize_flat_value(hm, es, &x));
-            let y_norm = Box::new(normalize_flat_value(hm, es, &y));
-            VCons(x_norm, y_norm)
-        }
-        VPair(x, y) => {
-            let x_norm = Box::new(normalize_flat_value(hm, es, &x));
-            let y_norm = Box::new(normalize_flat_value(hm, es, &y));
-            VPair(x_norm, y_norm)
+impl<M, R, CR> Normalizable for Thunk<M, Box<R>, CR>
+where
+    M: Clone,
+    R: Normalizable + Clone,
+    CR: Normalizable + Clone,
+{
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        match self {
+            Ev(val) => Ev(val.normalize(hm, es)),
+            UnevExpr(expr, env) => {
+                let expr_norm = expr.normalize(hm, es);
+                let env_norm = env.normalize(hm, es);
+                UnevExpr(expr_norm, env_norm)
+            }
+            Marker(m) => Marker(m.clone()),
         }
     }
 }
 
-pub fn normalize_expr(hm: &mut HashMap<Name, Name>, es: &mut EvalState, expr: &Expr) -> Expr {
-    match expr {
-        Lit(_) | Prim(_) => expr.clone(),
+impl<CR> Normalizable for TermEnv<CR>
+where
+    CR: Normalizable + Clone,
+{
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        self.iter()
+            .map(|(nm_env, flat_thunk)| {
+                let nm_env_norm = es.fresh_name();
+                hm.insert(nm_env.clone(), nm_env_norm.clone());
+                (nm_env_norm, flat_thunk.normalize(hm, es))
+            })
+            .collect()
+    }
+}
 
-        Var(x) => match hm.get(&x) {
-            None => panic!("normalize_expr: free variable: {:?}", x),
-            Some(v) => Var(v.clone()),
-        },
+impl<M> Normalizable for FlatValue<M>
+where
+    M: Clone,
+{
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        let FlatValue(val) = self;
+        FlatValue(val.normalize(hm, es))
+    }
+}
 
-        Lam(nm, bd) => {
-            let nm_norm = es.fresh_name();
-            hm.insert(nm.clone(), nm_norm.clone());
-            let bd_norm = Box::new(normalize_expr(hm, es, &bd));
-            Lam(nm_norm, bd_norm)
+impl<R, CR> Normalizable for Value<Box<R>, CR>
+where
+    R: Normalizable + Clone,
+    CR: Normalizable + Clone,
+{
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        match self {
+            VInt(_) | VBool(_) | VNil => (*self).clone(),
+            VClosure(nm, bd, env) => {
+                // TODO verify this is right
+                let env_norm = env.normalize(hm, es);
+                // INFO `bd` after `env`, so that vars in `bd` (which refer to `env`) get mapped right.
+                let nm_norm = es.fresh_name();
+                hm.insert(nm.clone(), nm_norm.clone());
+                let bd_norm = Box::new(bd.normalize(hm, es));
+                VClosure(nm_norm, bd_norm, env_norm)
+            }
+            VCons(x, y) => {
+                let x_norm = Box::new(x.normalize(hm, es));
+                let y_norm = Box::new(y.normalize(hm, es));
+                VCons(x_norm, y_norm)
+            }
+            VPair(x, y) => {
+                let x_norm = Box::new(x.normalize(hm, es));
+                let y_norm = Box::new(y.normalize(hm, es));
+                VPair(x_norm, y_norm)
+            }
         }
+    }
+}
 
-        Let(nm, e, bd) => {
-            let nm_norm = es.fresh_name();
-            hm.insert(nm.clone(), nm_norm.clone());
-            let e_norm = Box::new(normalize_expr(hm, es, &e));
-            let bd_norm = Box::new(normalize_expr(hm, es, &bd));
-            Let(nm_norm, e_norm, bd_norm)
+impl Normalizable for Expr {
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        match self {
+            Lit(_) | Prim(_) => self.clone(),
+
+            Var(x) => match hm.get(&x) {
+                None => panic!("normalize: free variable: {:?}", x),
+                Some(v) => Var(v.clone()),
+            },
+
+            Lam(nm, bd) => {
+                let nm_norm = es.fresh_name();
+                hm.insert(nm.clone(), nm_norm.clone());
+                let bd_norm = Box::new(bd.normalize(hm, es));
+                Lam(nm_norm, bd_norm)
+            }
+
+            Let(nm, e, bd) => {
+                let nm_norm = es.fresh_name();
+                hm.insert(nm.clone(), nm_norm.clone());
+                let e_norm = Box::new(e.normalize(hm, es));
+                let bd_norm = Box::new(bd.normalize(hm, es));
+                Let(nm_norm, e_norm, bd_norm)
+            }
+
+            If(tst, thn, els) => {
+                let tst_norm = Box::new(tst.normalize(hm, es));
+                let thn_norm = Box::new(thn.normalize(hm, es));
+                let els_norm = Box::new(els.normalize(hm, es));
+                If(tst_norm, thn_norm, els_norm)
+            }
+
+            App(fun, arg) => {
+                let fun_norm = Box::new(fun.normalize(hm, es));
+                let arg_norm = Box::new(arg.normalize(hm, es));
+                App(fun_norm, arg_norm)
+            }
+
+            Fix(e) => Fix(Box::new(e.normalize(hm, es))),
         }
-
-        If(tst, thn, els) => {
-            let tst_norm = Box::new(normalize_expr(hm, es, &tst));
-            let thn_norm = Box::new(normalize_expr(hm, es, &thn));
-            let els_norm = Box::new(normalize_expr(hm, es, &els));
-            If(tst_norm, thn_norm, els_norm)
-        }
-
-        App(fun, arg) => {
-            let fun_norm = Box::new(normalize_expr(hm, es, &fun));
-            let arg_norm = Box::new(normalize_expr(hm, es, &arg));
-            App(fun_norm, arg_norm)
-        }
-
-        Fix(e) => Fix(Box::new(normalize_expr(hm, es, &e))),
     }
 }
