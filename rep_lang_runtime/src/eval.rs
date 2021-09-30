@@ -35,7 +35,8 @@ pub enum Value<R, CR> {
     VPair(R, R),
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+// TODO figure out our PartialEq/Eq story. was it needed for HashMap? why did we only compare `Ev`?
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Thunk<M, R, CR> {
     UnevExpr(Expr, TermEnv<CR>),
     Marker(M),
@@ -45,10 +46,10 @@ pub enum Thunk<M, R, CR> {
 type IThunk<M> = Thunk<M, VRef, VRef>;
 type IValue = Value<VRef, VRef>;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FlatValue<M>(pub Value<Box<FlatValue<M>>, FlatThunk<M>>);
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FlatThunk<M>(pub Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>>);
 
 pub fn inject_flatvalue_to_flatthunk<M>(flat_val: FlatValue<M>) -> FlatThunk<M> {
@@ -79,20 +80,6 @@ macro_rules! vcons {
     ( $a: expr, $b: expr ) => {
         FlatThunk(Thunk::Ev(Value::VCons(Box::new($a), Box::new($b))))
     };
-}
-
-impl<M, R, CR> PartialEq for Thunk<M, R, CR>
-where
-    M: PartialEq,
-    R: PartialEq,
-    CR: PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Ev(x1), Ev(x2)) => x1 == x2,
-            _ => false,
-        }
-    }
 }
 
 impl<M, R, CR> fmt::Debug for Thunk<M, R, CR>
