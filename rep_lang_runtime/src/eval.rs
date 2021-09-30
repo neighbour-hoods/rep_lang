@@ -692,7 +692,29 @@ pub fn normalize_thunk<M: Clone>(
     es: &mut EvalState,
     thunk: &Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>>,
 ) -> Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>> {
-    todo!()
+    match thunk {
+        Ev(val) => Ev(normalize_value(hm, es, val)),
+        UnevExpr(expr, env) => {
+            let expr_norm = normalize_expr(hm, es, expr);
+            let env_norm = normalize_term_env(hm, es, env);
+            UnevExpr(expr_norm, env_norm)
+        }
+        Marker(m) => Marker(m.clone()),
+    }
+}
+
+pub fn normalize_term_env<CR>(
+    hm: &mut HashMap<Name, Name>,
+    es: &mut EvalState,
+    env: TermEnv<CR>,
+) -> TermEnv<CR> {
+    env.iter()
+        .map(|(nm_env, flat_thunk)| {
+            let nm_env_norm = es.fresh_name();
+            hm.insert(nm_env.clone(), nm_env_norm.clone());
+            (nm_env_norm, normalize_flat_thunk(hm, es, &flat_thunk))
+        })
+        .collect()
 }
 
 pub fn normalize_flat_value<M: Clone>(
@@ -713,14 +735,7 @@ pub fn normalize_value<M: Clone>(
         VInt(_) | VBool(_) | VNil => (*val).clone(),
         VClosure(nm, bd, env) => {
             // TODO verify this is right
-            let env_norm = env
-                .iter()
-                .map(|(nm_env, flat_thunk)| {
-                    let nm_env_norm = es.fresh_name();
-                    hm.insert(nm_env.clone(), nm_env_norm.clone());
-                    (nm_env_norm, normalize_flat_thunk(hm, es, &flat_thunk))
-                })
-                .collect();
+            let env_norm = normalize_term_env(hm, es, env);
             // INFO `bd` after `env`, so that vars in `bd` (which refer to `env`) get mapped right.
             let nm_norm = es.fresh_name();
             hm.insert(nm.clone(), nm_norm.clone());
