@@ -8,7 +8,7 @@ use std::{
 
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 use rep_lang_core::{
-    abstract_syntax::{primop_arity, Defn, Expr, Lit, Name, PrimOp, Program},
+    abstract_syntax::{gas_of_expr, primop_arity, Defn, Expr, Gas, Lit, Name, PrimOp, Program},
     app, lam,
     util::calculate_hash,
 };
@@ -394,12 +394,14 @@ impl<M> FlatValue<M> {
 
 pub struct EvalState {
     fresh_name_counter: u64,
+    gas_counter: Gas,
 }
 
 impl EvalState {
     pub fn new() -> EvalState {
         EvalState {
             fresh_name_counter: 0,
+            gas_counter: 0,
         }
     }
 
@@ -408,6 +410,14 @@ impl EvalState {
         self.fresh_name_counter += 1;
         let s = format!("_{}", cnt);
         Name(s)
+    }
+
+    pub fn add_gas_for_expr(&mut self, expr: &Expr) {
+        self.gas_counter += gas_of_expr(expr);
+    }
+
+    pub fn current_gas_count(&self) -> Gas {
+        self.fresh_name_counter
     }
 }
 
@@ -454,6 +464,7 @@ macro_rules! primop_binop_int {
 }
 
 pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Expr) -> VRef {
+    es.add_gas_for_expr(expr);
     match primop_apply_case(es, expr) {
         // in this case we directly interpret the PrimOp.
         PrimOpApplyCase::FullyApplied(op, args) => {

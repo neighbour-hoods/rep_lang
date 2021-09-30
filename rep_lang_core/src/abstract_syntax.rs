@@ -15,6 +15,22 @@ pub enum Expr {
     Prim(PrimOp),
 }
 
+pub type Gas = u64;
+
+use Expr::*;
+pub fn gas_of_expr(expr: &Expr) -> Gas {
+    match expr {
+        Var(_) => 1,
+        App(_, _) => 1,
+        Lam(_, _) => 1,
+        Let(_, _, _) => 1,
+        Lit(_) => 1,
+        If(_, _, _) => 1,
+        Fix(_) => 1,
+        Prim(_) => 1,
+    }
+}
+
 #[macro_export]
 macro_rules! app {
     ( $a: expr, $b: expr ) => {
