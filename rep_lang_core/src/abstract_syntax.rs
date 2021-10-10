@@ -1,9 +1,14 @@
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Name(pub String);
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub enum Expr {
     Var(Name),
     App(Box<Expr>, Box<Expr>),
@@ -45,13 +50,17 @@ macro_rules! lam {
     };
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub enum Lit {
     LInt(i64),
     LBool(bool),
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub enum PrimOp {
     Add,
     Sub,
@@ -68,10 +77,14 @@ pub enum PrimOp {
     Tail,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Defn(pub Name, pub Expr);
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Program {
     pub p_defns: Vec<Defn>,
     pub p_body: Expr,

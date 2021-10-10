@@ -1,4 +1,5 @@
 use pretty::RcDoc;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
@@ -19,13 +20,17 @@ use StoCell::*;
 use Thunk::*;
 use Value::*;
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct VRef(usize);
 
 // TODO assess whether deriving PartialEq is ok. I was manually implementing PartialEq so that it
 // closures would always be non-equal. I don't see we should do that instead of a regular check,
 // other than efficiency concerns.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub enum Value<R, CR> {
     VInt(i64),
     VBool(bool),
@@ -36,7 +41,9 @@ pub enum Value<R, CR> {
 }
 
 // TODO figure out our PartialEq/Eq story. was it needed for HashMap? why did we only compare `Ev`?
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub enum Thunk<M, R, CR> {
     UnevExpr(Expr, TermEnv<CR>),
     Marker(M),
@@ -46,10 +53,14 @@ pub enum Thunk<M, R, CR> {
 type IThunk<M> = Thunk<M, VRef, VRef>;
 type IValue = Value<VRef, VRef>;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct FlatValue<M>(pub Value<Box<FlatValue<M>>, FlatThunk<M>>);
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct FlatThunk<M>(pub Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>>);
 
 pub fn inject_flatvalue_to_flatthunk<M>(flat_val: FlatValue<M>) -> FlatThunk<M> {

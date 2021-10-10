@@ -1,12 +1,17 @@
 use pretty::RcDoc;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Tv(pub String);
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub enum Type {
     TVar(Tv),
     TCon(String),
@@ -15,7 +20,9 @@ pub enum Type {
     TPair(Box<Type>, Box<Type>),
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Scheme(pub Vec<Tv>, pub Type);
 
 // type constructors
