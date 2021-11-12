@@ -27,7 +27,9 @@ jobs:
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: ${{ matrix.rust }}
-      - run: cargo test --verbose --workspace
+      - run: cd rep_lang_concrete_syntax && CARGO_TARGET_DIR=../target cargo test --verbose
+      - run: cd rep_lang_core && CARGO_TARGET_DIR=../target cargo test --verbose
+      - run: cd rep_lang_runtime && CARGO_TARGET_DIR=../target cargo test --verbose
       # - run: cargo test --verbose --workspace --all-features
       # - run: cargo test --verbose --workspace --no-default-features
 
@@ -53,4 +55,6 @@ jobs:
       - uses: hecrj/setup-rust-action@v1
         with:
           components: rustfmt
-      - run: cargo fmt --all -- --check
+      - run: cd rep_lang_concrete_syntax && CARGO_TARGET_DIR=../target cargo fmt -- --check
+      - run: cd rep_lang_core && CARGO_TARGET_DIR=../target cargo fmt -- --check
+      - run: cd rep_lang_runtime && CARGO_TARGET_DIR=../target cargo fmt -- --check
