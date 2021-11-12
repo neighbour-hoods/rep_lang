@@ -18,6 +18,10 @@ const BANNER: &str = r#"
 /_/   \___/ .___/____/_/\__,_/_/ /_/\__, /
          /_/   /_____/             /____/
 
+welcome 🙂
+
+any expression or definition will be parsed, typechecked, and evaluated.
+quit with `ctrl-d`.
 "#;
 
 fn main() {
