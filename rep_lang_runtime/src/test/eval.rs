@@ -11,13 +11,13 @@ macro_rules! check_eval_expr {
                         Ok(_sc) => {
                             let env = new_term_env();
                             let mut es = EvalState::new();
-                            let mut sto = Sto::new();
+                            let mut sto = Sto::<()>::new();
                             let actual_ref = eval_(&env, &mut sto, &mut es, &expr);
-                            let actual_val = lookup_sto(&mut es, &actual_ref, &mut sto);
-                            let actual_flat_thunk =
-                                value_to_flat_thunk(&mut es, &actual_val, &mut sto);
+                            let actual_value = lookup_sto(&mut es, &actual_ref, &mut sto);
+                            let actual_flat_value =
+                                value_to_flat_value(&mut es, &actual_value, &mut sto);
                             assert_eq!(
-                                $expected_val, actual_flat_thunk,
+                                $expected_val, actual_flat_value,
                                 "interpreted value differs from give expected value"
                             )
                         }
@@ -48,33 +48,36 @@ pub mod eval_unit {
     use crate::{
         env::*,
         eval::{
-            eval_, lookup_sto, new_term_env, value_to_flat_thunk, EvalState, FlatThunk, Sto, Thunk,
+            eval_, lookup_sto, new_term_env, value_to_flat_value, EvalState, FlatValue, Sto, VRef,
             Value, Value::*,
         },
-        fte,
         infer::*,
         vcons,
     };
     use rep_lang_concrete_syntax::parse::expr;
 
+    fn ifv<M: Clone>(v: Value<VRef, VRef>) -> FlatValue<M> {
+        value_to_flat_value(&mut EvalState::new(), &v, &mut Sto::<M>::new())
+    }
+
     test_list![
-        (ex0, "1", fte!(VInt(1))),
-        (ex1, "(- (/ (* (+ 0 1) 6) 3) 2)", fte!(VInt(0))),
-        (ex2, "(((lam [x] x) (lam [x] x)) 9)", fte!(VInt(9))),
-        (ex3, "((lam [x] (if x 2 7)) (== 1 2))", fte!(VInt(7))),
+        (ex0, "1", ifv(VInt(1))),
+        (ex1, "(- (/ (* (+ 0 1) 6) 3) 2)", ifv(VInt(0))),
+        (ex2, "(((lam [x] x) (lam [x] x)) 9)", ifv(VInt(9))),
+        (ex3, "((lam [x] (if x 2 7)) (== 1 2))", ifv(VInt(7))),
         (
             ex4,
             r#"(let ([x (* 2 2)])
                  (cons x (cons 3 (cons 2 (cons 1 nil)))))"#,
             vcons!(
-                fte!(VInt(4)),
+                ifv(VInt(4)),
                 vcons!(
-                    fte!(VInt(3)),
-                    vcons!(fte!(VInt(2)), vcons!(fte!(VInt(1)), fte!(VNil)))
+                    ifv(VInt(3)),
+                    vcons!(ifv(VInt(2)), vcons!(ifv(VInt(1)), ifv(VNil)))
                 )
             )
         ),
-        (ex5, "true", fte!(VBool(true))),
+        (ex5, "true", ifv(VBool(true))),
         (
             ex6,
             r#"(let ([pr (pair 1 2)]
@@ -82,9 +85,9 @@ pub mod eval_unit {
                      [s snd])
                  (+ (f pr)
                     (s pr)))"#,
-            fte!(VInt(3))
+            ifv(VInt(3))
         ),
-        (ex8, "(null nil)", fte!(VBool(true))),
-        (ex7, "(null (cons 1 nil))", fte!(VBool(false))),
+        (ex8, "(null nil)", ifv(VBool(true))),
+        (ex7, "(null (cons 1 nil))", ifv(VBool(false))),
     ];
 }

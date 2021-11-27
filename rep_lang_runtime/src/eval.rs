@@ -89,7 +89,7 @@ macro_rules! fte {
 #[macro_export]
 macro_rules! vcons {
     ( $a: expr, $b: expr ) => {
-        FlatThunk(Thunk::Ev(Value::VCons(Box::new($a), Box::new($b))))
+        FlatValue(Value::VCons(Box::new($a), Box::new($b)))
     };
 }
 
