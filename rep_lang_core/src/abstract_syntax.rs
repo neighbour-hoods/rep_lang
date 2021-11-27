@@ -1,7 +1,14 @@
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Name(pub String);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub enum Expr {
     Var(Name),
     App(Box<Expr>, Box<Expr>),
@@ -11,6 +18,22 @@ pub enum Expr {
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Fix(Box<Expr>),
     Prim(PrimOp),
+}
+
+pub type Gas = u64;
+
+use Expr::*;
+pub fn gas_of_expr(expr: &Expr) -> Gas {
+    match expr {
+        Var(_) => 1,
+        App(_, _) => 1,
+        Lam(_, _) => 1,
+        Let(_, _, _) => 1,
+        Lit(_) => 1,
+        If(_, _, _) => 1,
+        Fix(_) => 1,
+        Prim(_) => 1,
+    }
 }
 
 #[macro_export]
@@ -28,12 +51,16 @@ macro_rules! lam {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub enum Lit {
     LInt(i64),
     LBool(bool),
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub enum PrimOp {
     Add,
     Sub,
@@ -51,9 +78,13 @@ pub enum PrimOp {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Defn(pub Name, pub Expr);
 
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Program {
     pub p_defns: Vec<Defn>,
     pub p_body: Expr,

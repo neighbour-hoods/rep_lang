@@ -1,4 +1,6 @@
 use pretty::RcDoc;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
@@ -7,36 +9,74 @@ use std::{
 
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 use rep_lang_core::{
-    abstract_syntax::{primop_arity, Defn, Expr, Lit, Name, PrimOp, Program},
+    abstract_syntax::{gas_of_expr, primop_arity, Defn, Expr, Gas, Lit, Name, PrimOp, Program},
     app, lam,
     util::calculate_hash,
 };
 
+use crate::fte;
+use Expr::*;
 use StoCell::*;
 use Thunk::*;
 use Value::*;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct VRef(usize);
 
-#[derive(Clone, Debug, Eq, Hash)]
-pub enum Value<R> {
+// TODO assess whether deriving PartialEq is ok. I was manually implementing PartialEq so that it
+// closures would always be non-equal. I don't see we should do that instead of a regular check,
+// other than efficiency concerns.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
+pub enum Value<R, CR> {
     VInt(i64),
     VBool(bool),
-    VClosure(Name, Box<Expr>, TermEnv),
+    VClosure(Name, Box<Expr>, TermEnv<CR>),
     VCons(R, R),
     VNil,
     VPair(R, R),
 }
 
-pub enum Thunk<R> {
-    UnevExpr(Expr, TermEnv),
-    UnevRust(Box<dyn FnMut() -> FlatThunk>),
-    Ev(Value<R>),
+// TODO figure out our PartialEq/Eq story. was it needed for HashMap? why did we only compare `Ev`?
+#[derive(Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
+pub enum Thunk<M, R, CR> {
+    UnevExpr(Expr, TermEnv<CR>),
+    Marker(M),
+    Ev(Value<R, CR>),
 }
 
-#[derive(Debug, PartialEq)]
-pub struct FlatThunk(pub Thunk<Box<FlatThunk>>);
+type IThunk<M> = Thunk<M, VRef, VRef>;
+type IValue = Value<VRef, VRef>;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
+pub struct FlatValue<M>(pub Value<Box<FlatValue<M>>, FlatThunk<M>>);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
+pub struct FlatThunk<M>(pub Thunk<M, Box<FlatThunk<M>>, FlatThunk<M>>);
+
+pub fn inject_flatvalue_to_flatthunk<M>(flat_val: FlatValue<M>) -> FlatThunk<M> {
+    let FlatValue(val) = flat_val;
+    match val {
+        VInt(x) => fte!(VInt(x)),
+        VBool(x) => fte!(VBool(x)),
+        VClosure(nm, bd, env) => fte!(VClosure(nm, bd, env)),
+        VNil => fte!(VNil),
+        VCons(x, y) | VPair(x, y) => {
+            let x_ft = inject_flatvalue_to_flatthunk(*x);
+            let y_ft = inject_flatvalue_to_flatthunk(*y);
+            fte!(VCons(Box::new(x_ft), Box::new(y_ft)))
+        }
+    }
+}
 
 // FlatThunk Ev
 #[macro_export]
@@ -49,33 +89,16 @@ macro_rules! fte {
 #[macro_export]
 macro_rules! vcons {
     ( $a: expr, $b: expr ) => {
-        FlatThunk(Thunk::Ev(Value::VCons(Box::new($a), Box::new($b))))
+        FlatValue(Value::VCons(Box::new($a), Box::new($b)))
     };
 }
 
-impl<R: PartialEq> PartialEq for Value<R> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (VInt(i1), VInt(i2)) => i1 == i2,
-            (VBool(b1), VBool(b2)) => b1 == b2,
-            (VCons(x1, l1), VCons(x2, l2)) => x1 == x2 && l1 == l2,
-            (VNil, VNil) => true,
-            (VPair(x1, y1), VPair(x2, y2)) => x1 == x2 && y1 == y2,
-            (_, _) => false,
-        }
-    }
-}
-
-impl<R: PartialEq> PartialEq for Thunk<R> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Ev(x1), Ev(x2)) => x1 == x2,
-            _ => false,
-        }
-    }
-}
-
-impl<R: fmt::Debug> fmt::Debug for Thunk<R> {
+impl<M, R, CR> fmt::Debug for Thunk<M, R, CR>
+where
+    M: fmt::Debug,
+    R: fmt::Debug,
+    CR: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Ev(val) => f.debug_struct("Ev").field("_", val).finish(),
@@ -84,27 +107,30 @@ impl<R: fmt::Debug> fmt::Debug for Thunk<R> {
                 .field("expr", &expr)
                 .field("env", &env)
                 .finish(),
-            UnevRust(_) => f.write_str("UnevRust <<closure>>"),
+            Marker(m) => f.debug_struct("Marker").field("_", m).finish(),
         }
     }
 }
 
-type TermEnv = BTreeMap<Name, VRef>;
+type TermEnv<V> = BTreeMap<Name, V>;
+type ITermEnv = TermEnv<VRef>;
 
-pub fn new_term_env() -> TermEnv {
+pub fn new_term_env<V>() -> TermEnv<V> {
     BTreeMap::new()
 }
 
 #[derive(Debug)]
-pub enum StoCell {
-    CellThunk(Thunk<VRef>),
+pub enum StoCell<M> {
+    CellThunk(IThunk<M>),
     CellRedirect(VRef),
 }
 
 #[derive(Debug)]
-pub struct Sto {
+pub struct Sto<M> {
     // "heap" of addressed thunks
-    pub sto_vec: Vec<StoCell>,
+    pub sto_vec: Vec<StoCell<M>>,
+
+    // TODO decide if we will cache `Marker`s
 
     // map from evaluated `Value` to index in `sto_vec`.
     //
@@ -120,8 +146,8 @@ pub struct Sto {
     pub sto_unev_map: HashMap<u64, usize>,
 }
 
-impl Sto {
-    pub fn new() -> Sto {
+impl<M> Sto<M> {
+    pub fn new() -> Sto<M> {
         Sto {
             sto_vec: Vec::new(),
             sto_ev_map: HashMap::new(),
@@ -130,7 +156,7 @@ impl Sto {
     }
 }
 
-impl Default for Sto {
+impl<M> Default for Sto<M> {
     fn default() -> Self {
         Self::new()
     }
@@ -138,7 +164,7 @@ impl Default for Sto {
 
 // TODO this likely performs significant amounts of cloning. however, it's
 // possible this is approximately the minimal amount of cloning possible.
-pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto) -> Value<VRef> {
+pub fn lookup_sto<'a, M>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> IValue {
     let VRef(idx) = *vr;
     match sto.sto_vec.get_mut(idx) {
         None => panic!("lookup_sto: out of bounds"),
@@ -153,18 +179,26 @@ pub fn lookup_sto<'a>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto) -> Value<
                 sto.sto_vec[idx] = CellRedirect(vr2);
                 val
             }
-            UnevRust(clo) => {
-                let flat_thunk = clo();
-                let vr2 = flat_thunk_to_sto_ref(es, sto, flat_thunk);
-                let val = lookup_sto(es, &vr2, sto);
-                sto.sto_vec[idx] = CellRedirect(vr2);
-                val
+            Marker(_m) => {
+                todo!("call the oracle here")
             }
         },
     }
 }
 
-pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
+pub fn get_sto<'a, M>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> IThunk<M>
+where
+    M: Clone,
+{
+    let VRef(idx) = *vr;
+    match sto.sto_vec.get_mut(idx) {
+        None => panic!("lookup_sto: out of bounds"),
+        Some(CellRedirect(vr2)) => get_sto(es, &vr2.clone(), sto),
+        Some(CellThunk(thnk)) => thnk.clone(),
+    }
+}
+
+pub fn add_to_sto<M>(thnk: IThunk<M>, sto: &mut Sto<M>) -> VRef {
     match thnk {
         Ev(ref val) => {
             let hash = calculate_hash(&val);
@@ -190,7 +224,7 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
                 }
             }
         }
-        UnevRust(_) => {
+        Marker(_) => {
             let idx = sto.sto_vec.len();
             sto.sto_vec.push(CellThunk(thnk));
             VRef(idx)
@@ -198,34 +232,79 @@ pub fn add_to_sto(thnk: Thunk<VRef>, sto: &mut Sto) -> VRef {
     }
 }
 
-pub fn value_to_flat_thunk(es: &mut EvalState, val: &Value<VRef>, sto: &mut Sto) -> FlatThunk {
+pub fn thunk_to_flat_thunk<M>(
+    es: &mut EvalState,
+    thnk: &IThunk<M>,
+    sto: &mut Sto<M>,
+) -> FlatThunk<M>
+where
+    M: Clone,
+{
+    match thnk {
+        Ev(val) => inject_flatvalue_to_flatthunk(value_to_flat_value(es, val, sto)),
+        UnevExpr(expr, env) => {
+            let mut new_env: TermEnv<FlatThunk<M>> = new_term_env();
+            for (nm, vr) in env {
+                let thnk = get_sto(es, vr, sto);
+                let flat_thnk = thunk_to_flat_thunk(es, &thnk, sto);
+                new_env.insert(nm.clone(), flat_thnk);
+            }
+            FlatThunk(UnevExpr(expr.clone(), new_env))
+        }
+        Marker(m) => FlatThunk(Marker(m.clone())),
+    }
+}
+
+pub fn value_to_flat_value<M>(es: &mut EvalState, val: &IValue, sto: &mut Sto<M>) -> FlatValue<M>
+where
+    M: Clone,
+{
     match val {
-        VInt(x) => FlatThunk(Ev(VInt(*x))),
-        VBool(x) => FlatThunk(Ev(VBool(*x))),
-        VClosure(nm, bd, env) => FlatThunk(Ev(VClosure(nm.clone(), bd.clone(), env.clone()))),
+        VInt(x) => FlatValue(VInt(*x)),
+        VBool(x) => FlatValue(VBool(*x)),
+        VClosure(nm, bd, env) => {
+            let mut new_env: TermEnv<FlatThunk<M>> = new_term_env();
+            for (nm, vr) in env {
+                let thnk = get_sto(es, vr, sto);
+                let flat_thnk = thunk_to_flat_thunk(es, &thnk, sto);
+                new_env.insert(nm.clone(), flat_thnk);
+            }
+            FlatValue(VClosure(nm.clone(), bd.clone(), new_env))
+        }
         VCons(hd, tl) => {
             let hd_v = lookup_sto(es, hd, sto);
-            let hd_ = value_to_flat_thunk(es, &hd_v, sto);
+            let hd_ = value_to_flat_value(es, &hd_v, sto);
             let tl_v = lookup_sto(es, tl, sto);
-            let tl_ = value_to_flat_thunk(es, &tl_v, sto);
-            FlatThunk(Ev(VCons(Box::new(hd_), Box::new(tl_))))
+            let tl_ = value_to_flat_value(es, &tl_v, sto);
+            FlatValue(VCons(Box::new(hd_), Box::new(tl_)))
         }
-        VNil => FlatThunk(Ev(VNil)),
+        VNil => FlatValue(VNil),
         VPair(x, y) => {
             let x_v = lookup_sto(es, x, sto);
-            let x_ = value_to_flat_thunk(es, &x_v, sto);
+            let x_ = value_to_flat_value(es, &x_v, sto);
             let y_v = lookup_sto(es, y, sto);
-            let y_ = value_to_flat_thunk(es, &y_v, sto);
-            FlatThunk(Ev(VPair(Box::new(x_), Box::new(y_))))
+            let y_ = value_to_flat_value(es, &y_v, sto);
+            FlatValue(VPair(Box::new(x_), Box::new(y_)))
         }
     }
 }
 
-pub fn flat_thunk_to_sto_ref(es: &mut EvalState, sto: &mut Sto, flat_thunk: FlatThunk) -> VRef {
+pub fn flat_thunk_to_sto_ref<M>(
+    es: &mut EvalState,
+    sto: &mut Sto<M>,
+    flat_thunk: FlatThunk<M>,
+) -> VRef {
     let FlatThunk(thunk) = flat_thunk;
     match thunk {
-        UnevExpr(expr, env) => add_to_sto(UnevExpr(expr, env), sto),
-        UnevRust(clo) => add_to_sto(UnevRust(clo), sto),
+        UnevExpr(expr, env) => {
+            let mut new_env: TermEnv<VRef> = new_term_env();
+            for (nm, f_t) in env {
+                let vr = flat_thunk_to_sto_ref(es, sto, f_t);
+                new_env.insert(nm.clone(), vr);
+            }
+            add_to_sto(UnevExpr(expr, new_env), sto)
+        }
+        Marker(m) => add_to_sto(Marker(m), sto),
         Ev(val) => {
             let new_val = match val {
                 VCons(hd, tl) => {
@@ -243,7 +322,14 @@ pub fn flat_thunk_to_sto_ref(es: &mut EvalState, sto: &mut Sto, flat_thunk: Flat
                 // necessary in order to recast the structs with a different `<R>`.
                 VInt(x) => VInt(x),
                 VBool(x) => VBool(x),
-                VClosure(nm, bd, env) => VClosure(nm, bd, env),
+                VClosure(nm, bd, env) => {
+                    let mut new_env: TermEnv<VRef> = new_term_env();
+                    for (nm, f_t) in env {
+                        let vr = flat_thunk_to_sto_ref(es, sto, f_t);
+                        new_env.insert(nm.clone(), vr);
+                    }
+                    VClosure(nm, bd, new_env)
+                }
                 VNil => VNil,
             };
             add_to_sto(Ev(new_val), sto)
@@ -251,25 +337,23 @@ pub fn flat_thunk_to_sto_ref(es: &mut EvalState, sto: &mut Sto, flat_thunk: Flat
     }
 }
 
-impl FlatThunk {
+impl<M> FlatValue<M> {
     pub fn ppr(&self) -> RcDoc<()> {
-        match self {
-            FlatThunk(Ev(val)) => match val {
-                VInt(n) => RcDoc::as_string(n),
-                VBool(true) => RcDoc::text("true"),
-                VBool(false) => RcDoc::text("false"),
-                VClosure(_, _, _) => RcDoc::text("<<closure>>"),
-                VCons(hd, tl) => parens(
-                    RcDoc::text("cons")
-                        .append(sp!())
-                        .append(hd.ppr())
-                        .append(sp!())
-                        .append(tl.ppr()),
-                ),
-                VNil => RcDoc::text("nil"),
-                VPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
-            },
-            _ => panic!("ppr: FlatThunk: unforced thunk"),
+        let FlatValue(val) = self;
+        match val {
+            VInt(n) => RcDoc::as_string(n),
+            VBool(true) => RcDoc::text("true"),
+            VBool(false) => RcDoc::text("false"),
+            VClosure(_, _, _) => RcDoc::text("<<closure>>"),
+            VCons(hd, tl) => parens(
+                RcDoc::text("cons")
+                    .append(sp!())
+                    .append(hd.ppr())
+                    .append(sp!())
+                    .append(tl.ppr()),
+            ),
+            VNil => RcDoc::text("nil"),
+            VPair(a, b) => parens(a.ppr().append(RcDoc::text(", ")).append(b.ppr())),
         }
     }
 }
@@ -307,22 +391,32 @@ impl FlatThunk {
 //     }
 // }
 
-pub struct EvalState(u64);
+pub struct EvalState {
+    fresh_name_counter: u64,
+    gas_counter: Gas,
+}
 
 impl EvalState {
     pub fn new() -> EvalState {
-        EvalState(0)
+        EvalState {
+            fresh_name_counter: 0,
+            gas_counter: 0,
+        }
     }
 
-    pub fn fresh(&mut self) -> Name {
-        let cnt = match self {
-            EvalState(c) => {
-                *c += 1;
-                *c
-            }
-        };
+    pub fn fresh_name(&mut self) -> Name {
+        let cnt = self.fresh_name_counter;
+        self.fresh_name_counter += 1;
         let s = format!("_{}", cnt);
         Name(s)
+    }
+
+    pub fn add_gas_for_expr(&mut self, expr: &Expr) {
+        self.gas_counter += gas_of_expr(expr);
+    }
+
+    pub fn current_gas_count(&self) -> Gas {
+        self.fresh_name_counter
     }
 }
 
@@ -332,20 +426,25 @@ impl Default for EvalState {
     }
 }
 
-pub fn eval_defn(env: &mut TermEnv, sto: &mut Sto, es: &mut EvalState, defn: &Defn) {
+pub fn eval_defn<M>(env: &mut ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, defn: &Defn) {
     let Defn(nm, bd) = defn;
     let vr = eval_(env, sto, es, bd);
     env.insert(nm.clone(), vr);
 }
 
-pub fn eval_program(env: &mut TermEnv, sto: &mut Sto, es: &mut EvalState, prog: &Program) -> VRef {
+pub fn eval_program<M>(
+    env: &mut ITermEnv,
+    sto: &mut Sto<M>,
+    es: &mut EvalState,
+    prog: &Program,
+) -> VRef {
     for defn in prog.p_defns.iter() {
         eval_defn(env, sto, es, defn);
     }
     eval_(env, sto, es, &prog.p_body)
 }
 
-pub fn eval(sto: &mut Sto, expr: &Expr) -> VRef {
+pub fn eval<M>(sto: &mut Sto<M>, expr: &Expr) -> VRef {
     let env = new_term_env();
     let mut es = EvalState::new();
     eval_(&env, sto, &mut es, expr)
@@ -363,7 +462,8 @@ macro_rules! primop_binop_int {
     };
 }
 
-pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> VRef {
+pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Expr) -> VRef {
+    es.add_gas_for_expr(expr);
     match primop_apply_case(es, expr) {
         // in this case we directly interpret the PrimOp.
         PrimOpApplyCase::FullyApplied(op, args) => {
@@ -468,7 +568,8 @@ pub fn eval_(env: &TermEnv, sto: &mut Sto, es: &mut EvalState, expr: &Expr) -> V
             Expr::Prim(op) => {
                 let arity = primop_arity(op);
                 assert_ne!(arity, 0, "unhandled nullary primop");
-                let fresh_names: Vec<Name> = iter::repeat_with(|| es.fresh()).take(arity).collect();
+                let fresh_names: Vec<Name> =
+                    iter::repeat_with(|| es.fresh_name()).take(arity).collect();
 
                 // create the inner lambda body, successively apply `op` to
                 // each fresh name.
@@ -553,7 +654,8 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
                 // not fully applied
                 Ordering::Greater => {
                     // generate fresh names for the args which have not been applied
-                    let names: Vec<Name> = iter::repeat_with(|| es.fresh()).take(delta).collect();
+                    let names: Vec<Name> =
+                        iter::repeat_with(|| es.fresh_name()).take(delta).collect();
                     // wrap said fresh names into `Expr`s
                     let name_vars = names.clone().into_iter().map(Expr::Var);
                     // iterator which runs through the provided arguments, adding the fresh names
@@ -570,6 +672,142 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
                     PrimOpApplyCase::PartiallyApplied(lam)
                 }
             }
+        }
+    }
+}
+
+pub trait Normalizable {
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self;
+}
+
+impl<M> Normalizable for FlatThunk<M>
+where
+    M: Clone,
+{
+    fn normalize(
+        self: &FlatThunk<M>,
+        hm: &mut HashMap<Name, Name>,
+        es: &mut EvalState,
+    ) -> FlatThunk<M> {
+        let FlatThunk(thunk) = self;
+        FlatThunk(thunk.normalize(hm, es))
+    }
+}
+
+impl<M, R, CR> Normalizable for Thunk<M, Box<R>, CR>
+where
+    M: Clone,
+    R: Normalizable + Clone,
+    CR: Normalizable + Clone,
+{
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        match self {
+            Ev(val) => Ev(val.normalize(hm, es)),
+            UnevExpr(expr, env) => {
+                let expr_norm = expr.normalize(hm, es);
+                let env_norm = env.normalize(hm, es);
+                UnevExpr(expr_norm, env_norm)
+            }
+            Marker(m) => Marker(m.clone()),
+        }
+    }
+}
+
+impl<CR> Normalizable for TermEnv<CR>
+where
+    CR: Normalizable + Clone,
+{
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        self.iter()
+            .map(|(nm_env, flat_thunk)| {
+                let nm_env_norm = es.fresh_name();
+                hm.insert(nm_env.clone(), nm_env_norm.clone());
+                (nm_env_norm, flat_thunk.normalize(hm, es))
+            })
+            .collect()
+    }
+}
+
+impl<M> Normalizable for FlatValue<M>
+where
+    M: Clone,
+{
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        let FlatValue(val) = self;
+        FlatValue(val.normalize(hm, es))
+    }
+}
+
+impl<R, CR> Normalizable for Value<Box<R>, CR>
+where
+    R: Normalizable + Clone,
+    CR: Normalizable + Clone,
+{
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        match self {
+            VInt(_) | VBool(_) | VNil => (*self).clone(),
+            VClosure(nm, bd, env) => {
+                // TODO verify this is right
+                let env_norm = env.normalize(hm, es);
+                // INFO `bd` after `env`, so that vars in `bd` (which refer to `env`) get mapped right.
+                let nm_norm = es.fresh_name();
+                hm.insert(nm.clone(), nm_norm.clone());
+                let bd_norm = Box::new(bd.normalize(hm, es));
+                VClosure(nm_norm, bd_norm, env_norm)
+            }
+            VCons(x, y) => {
+                let x_norm = Box::new(x.normalize(hm, es));
+                let y_norm = Box::new(y.normalize(hm, es));
+                VCons(x_norm, y_norm)
+            }
+            VPair(x, y) => {
+                let x_norm = Box::new(x.normalize(hm, es));
+                let y_norm = Box::new(y.normalize(hm, es));
+                VPair(x_norm, y_norm)
+            }
+        }
+    }
+}
+
+impl Normalizable for Expr {
+    fn normalize(&self, hm: &mut HashMap<Name, Name>, es: &mut EvalState) -> Self {
+        match self {
+            Lit(_) | Prim(_) => self.clone(),
+
+            Var(x) => match hm.get(&x) {
+                None => panic!("normalize: free variable: {:?}", x),
+                Some(v) => Var(v.clone()),
+            },
+
+            Lam(nm, bd) => {
+                let nm_norm = es.fresh_name();
+                hm.insert(nm.clone(), nm_norm.clone());
+                let bd_norm = Box::new(bd.normalize(hm, es));
+                Lam(nm_norm, bd_norm)
+            }
+
+            Let(nm, e, bd) => {
+                let nm_norm = es.fresh_name();
+                hm.insert(nm.clone(), nm_norm.clone());
+                let e_norm = Box::new(e.normalize(hm, es));
+                let bd_norm = Box::new(bd.normalize(hm, es));
+                Let(nm_norm, e_norm, bd_norm)
+            }
+
+            If(tst, thn, els) => {
+                let tst_norm = Box::new(tst.normalize(hm, es));
+                let thn_norm = Box::new(thn.normalize(hm, es));
+                let els_norm = Box::new(els.normalize(hm, es));
+                If(tst_norm, thn_norm, els_norm)
+            }
+
+            App(fun, arg) => {
+                let fun_norm = Box::new(fun.normalize(hm, es));
+                let arg_norm = Box::new(arg.normalize(hm, es));
+                App(fun_norm, arg_norm)
+            }
+
+            Fix(e) => Fix(Box::new(e.normalize(hm, es))),
         }
     }
 }

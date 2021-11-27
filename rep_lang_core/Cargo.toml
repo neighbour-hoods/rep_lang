@@ -7,5 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+holochain_serialized_bytes_derive = { version = "0.0.51", optional = true }
 quickcheck = "0.9.2"
 rand = "0.7"
+serde = { version = "1.0", optional = true }
+
+[features]
+hc = ["holochain_serialized_bytes_derive", "serde"]

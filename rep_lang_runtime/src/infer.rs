@@ -254,7 +254,8 @@ pub fn infer_program_with_is(
         let sc = infer_expr(&env, expr)?;
         env.extend(name.clone(), sc);
     }
-    let (sc, is) = infer_expr_with_is(&env, &prog.p_body)?;
+    let mut is = InferState::new();
+    let sc = infer_expr_with_is(&env, &mut is, &prog.p_body)?;
     Ok((sc, env, is))
 }
 
@@ -267,11 +268,14 @@ pub fn infer_program(mut env: Env, prog: &Program) -> Result<(Scheme, Env), Type
     Ok((sc, env))
 }
 
-fn infer_expr_with_is(env: &Env, expr: &Expr) -> Result<(Scheme, InferState), TypeError> {
-    let mut is = InferState::new();
-    let (ty, csts) = infer(env, &mut is, expr)?;
+pub fn infer_expr_with_is(
+    env: &Env,
+    is: &mut InferState,
+    expr: &Expr,
+) -> Result<Scheme, TypeError> {
+    let (ty, csts) = infer(env, is, expr)?;
     let subst = run_solve(csts)?;
-    Ok((close_over(ty.apply(&subst)), is))
+    Ok(close_over(ty.apply(&subst)))
 }
 
 pub fn infer_expr(env: &Env, expr: &Expr) -> Result<Scheme, TypeError> {
@@ -294,16 +298,16 @@ pub fn constraints_expr(
 }
 
 fn close_over(ty: Type) -> Scheme {
-    normalize(generalize(Env::new(), ty))
+    let mut is = InferState::new();
+    normalize(&mut is, generalize(Env::new(), ty))
 }
 
-fn normalize(sc: Scheme) -> Scheme {
+pub fn normalize(is: &mut InferState, sc: Scheme) -> Scheme {
     let Scheme(_, body) = sc;
     let hm = {
         let mut vars: Vec<Tv> = free_type_vars(body.clone()).collect();
         vars.dedup();
         let mut hm = HashMap::new();
-        let mut is = InferState::new();
         for var in vars {
             hm.insert(var, is.fresh_tv());
         }
