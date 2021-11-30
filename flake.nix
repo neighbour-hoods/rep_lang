@@ -37,6 +37,8 @@
           ];
         };
 
+        # warning: this is broken due to
+        # https://github.com/nix-community/naersk/issues/133
         packages.rep_lang_runtime =
           let
             rust = pkgs.rust-bin.stable.${rustVersion}.default;
