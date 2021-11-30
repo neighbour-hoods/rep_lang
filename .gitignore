@@ -1,6 +1,7 @@
 /target
 **/target
-Cargo.lock
+rep_lang_concrete_syntax/Cargo.lock
+rep_lang_core/Cargo.lock
 
 # nix
 result
