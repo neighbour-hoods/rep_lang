@@ -8,9 +8,10 @@
       url = "github:edolstra/flake-compat";
       flake = false;
     };
+    naersk.url = "github:nix-community/naersk";
   };
 
-  outputs = { nixpkgs, flake-utils, rust-overlay, cargo2nix, ... }:
+  outputs = { nixpkgs, flake-utils, rust-overlay, cargo2nix, naersk, ... }:
     flake-utils.lib.eachSystem ["x86_64-linux" "aarch64-linux"] (system:
       let
 
@@ -37,6 +38,22 @@
         };
 
         packages.rep_lang_runtime =
+          let
+            rust = pkgs.rust-bin.stable.${rustVersion}.default;
+
+            naersk' = pkgs.callPackage naersk {
+              cargo = rust;
+              rustc = rust;
+            };
+          in
+          naersk'.buildPackage {
+            src = ./rep_lang_runtime;
+            copyLibs = true;
+          };
+
+        # warning: this is broken due to
+        # https://github.com/cargo2nix/cargo2nix/issues/211
+        packages.rep_lang_runtime-cargo2nix =
           let
             rustPkgs = pkgs.rustBuilder.makePackageSet' {
               rustChannel = rustVersion;
