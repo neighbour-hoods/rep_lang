@@ -368,7 +368,7 @@ fn solver(subst: Subst, mut csts: Vec<Constraint>) -> Result<Subst, TypeError> {
     }
 }
 
-fn unifies(t1: Type, t2: Type) -> Result<Subst, TypeError> {
+pub fn unifies(t1: Type, t2: Type) -> Result<Subst, TypeError> {
     match (t1, t2) {
         (a, b) if a == b => Ok(HashMap::new()),
         (Type::TVar(v), t) => bind(v, t),
