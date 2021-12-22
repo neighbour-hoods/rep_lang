@@ -1,3 +1,6 @@
+// TODO remember + document why these are not implemented as `ppr` trait
+// instances as in `eval`.
+
 use pretty::RcDoc;
 use std::iter;
 
