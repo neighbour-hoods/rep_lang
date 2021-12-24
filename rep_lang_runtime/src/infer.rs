@@ -297,7 +297,7 @@ pub fn constraints_expr(
     Ok((csts, subst, ty, sc))
 }
 
-fn close_over(ty: Type) -> Scheme {
+pub fn close_over(ty: Type) -> Scheme {
     let mut is = InferState::new();
     normalize(&mut is, generalize(Env::new(), ty))
 }
