@@ -789,20 +789,20 @@ impl Normalizable for Expr {
             Let(nm, e, bd) => {
                 let nm_norm = es.fresh_name();
                 hm.insert(nm.clone(), nm_norm.clone());
-                let e_norm = Box::new(e.normalize(hm, es));
+                let e_norm = Box::new(e.normalize(&mut hm.clone(), es));
                 let bd_norm = Box::new(bd.normalize(hm, es));
                 Let(nm_norm, e_norm, bd_norm)
             }
 
             If(tst, thn, els) => {
-                let tst_norm = Box::new(tst.normalize(hm, es));
-                let thn_norm = Box::new(thn.normalize(hm, es));
+                let tst_norm = Box::new(tst.normalize(&mut hm.clone(), es));
+                let thn_norm = Box::new(thn.normalize(&mut hm.clone(), es));
                 let els_norm = Box::new(els.normalize(hm, es));
                 If(tst_norm, thn_norm, els_norm)
             }
 
             App(fun, arg) => {
-                let fun_norm = Box::new(fun.normalize(hm, es));
+                let fun_norm = Box::new(fun.normalize(&mut hm.clone(), es));
                 let arg_norm = Box::new(arg.normalize(hm, es));
                 App(fun_norm, arg_norm)
             }
