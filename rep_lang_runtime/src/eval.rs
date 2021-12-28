@@ -821,7 +821,7 @@ impl Normalizable for Expr {
         match self {
             Lit(_) | Prim(_) => self.clone(),
 
-            Var(x) => match hm.get(&x) {
+            Var(x) => match hm.get(x) {
                 None => panic!("normalize: free variable: {:?}", x),
                 Some(v) => Var(v.clone()),
             },

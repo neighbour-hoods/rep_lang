@@ -515,7 +515,7 @@ pub fn infer_primop(is: &mut InferState, op: &PrimOp) -> Type {
 }
 
 fn unop_arr(arg: Type, ret: Type) -> Type {
-    Type::TArr(Box::new(arg.clone()), Box::new(ret))
+    Type::TArr(Box::new(arg), Box::new(ret))
 }
 
 fn binop_arr(arg: Type, ret: Type) -> Type {
