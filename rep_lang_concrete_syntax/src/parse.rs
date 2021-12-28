@@ -36,6 +36,11 @@ where
         res_str("*").map(|_| PrimOp::Mul),
         res_str("/").map(|_| PrimOp::Div),
         res_str("==").map(|_| PrimOp::Eql),
+        res_str("and").map(|_| PrimOp::And),
+        res_str("or").map(|_| PrimOp::Or),
+        attempt(res_str("not").map(|_| PrimOp::Not)),
+        res_str("<").map(|_| PrimOp::Lt),
+        res_str(">").map(|_| PrimOp::Gt),
         attempt(res_str("null").map(|_| PrimOp::Null)),
         res_str("pair").map(|_| PrimOp::Pair),
         res_str("fst").map(|_| PrimOp::Fst),
@@ -230,7 +235,7 @@ where
 pub fn reserved() -> Vec<String> {
     [
         "let", "lam", "fix", "true", "false", "if", "null", "pair", "fst", "snd", "cons", "defn",
-        "list", "nil", "head", "tail",
+        "list", "nil", "head", "tail", "and", "or", "not", ">", "<"
     ]
     .iter()
     .map(|x| x.to_string())

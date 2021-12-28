@@ -470,6 +470,11 @@ pub fn infer_primop(is: &mut InferState, op: &PrimOp) -> Type {
         PrimOp::Mul => binop_arr(type_int(), type_int()),
         PrimOp::Div => binop_arr(type_int(), type_int()),
         PrimOp::Eql => binop_arr(type_int(), type_bool()),
+        PrimOp::And => binop_arr(type_bool(), type_bool()),
+        PrimOp::Or => binop_arr(type_bool(), type_bool()),
+        PrimOp::Not => unop_arr(type_bool(), type_bool()),
+        PrimOp::Lt => binop_arr(type_int(), type_bool()),
+        PrimOp::Gt => binop_arr(type_int(), type_bool()),
         PrimOp::Null => {
             let tv = is.fresh();
             type_arr(type_list(tv), type_bool())
@@ -507,6 +512,10 @@ pub fn infer_primop(is: &mut InferState, op: &PrimOp) -> Type {
             type_arr(ls1, ls2)
         }
     }
+}
+
+fn unop_arr(arg: Type, ret: Type) -> Type {
+    Type::TArr(Box::new(arg.clone()), Box::new(ret))
 }
 
 fn binop_arr(arg: Type, ret: Type) -> Type {
