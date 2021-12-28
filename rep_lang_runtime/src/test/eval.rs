@@ -29,6 +29,7 @@ macro_rules! check_eval_expr {
     };
 }
 
+// TODO redo this and generate `fn_name` with an incrementing counter in the loop
 #[cfg(test)]
 macro_rules! test_list {
     ($( ($fn_name:ident, $str:expr, $expected_val:expr) ),+ $(,)?) => (
@@ -87,7 +88,12 @@ pub mod eval_unit {
                     (s pr)))"#,
             ifv(VInt(3))
         ),
-        (ex8, "(null nil)", ifv(VBool(true))),
         (ex7, "(null (cons 1 nil))", ifv(VBool(false))),
+        (ex8, "(null nil)", ifv(VBool(true))),
+        (ex9, "(and true false)", ifv(VBool(false))),
+        (ex10, "(or true false)", ifv(VBool(true))),
+        (ex11, "(not true)", ifv(VBool(false))),
+        (ex12, "(> 2 1)", ifv(VBool(true))),
+        (ex13, "(< 2 1)", ifv(VBool(false))),
     ];
 }

@@ -75,6 +75,11 @@ pub enum PrimOp {
     Nil,
     Head,
     Tail,
+    And,
+    Or,
+    Not,
+    Lt,
+    Gt,
 }
 
 #[derive(Clone, Debug)]
@@ -107,5 +112,10 @@ pub fn primop_arity(op: &PrimOp) -> usize {
         PrimOp::Nil => 0,
         PrimOp::Head => 1,
         PrimOp::Tail => 1,
+        PrimOp::And => 2,
+        PrimOp::Or => 2,
+        PrimOp::Not => 1,
+        PrimOp::Lt => 2,
+        PrimOp::Gt => 2,
     }
 }

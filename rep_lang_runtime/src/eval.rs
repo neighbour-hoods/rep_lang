@@ -486,6 +486,53 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                     }
                     _ => panic!("==: bad types"),
                 },
+                PrimOp::And => match (
+                    lookup_sto(es, &args_v[0], sto),
+                    lookup_sto(es, &args_v[1], sto),
+                ) {
+                    (VBool(a_), VBool(b_)) => {
+                        let val = VBool(a_ && b_);
+                        add_to_sto(Ev(val), sto)
+                    }
+                    _ => panic!("and: bad types"),
+                },
+                PrimOp::Or => match (
+                    lookup_sto(es, &args_v[0], sto),
+                    lookup_sto(es, &args_v[1], sto),
+                ) {
+                    (VBool(a_), VBool(b_)) => {
+                        let val = VBool(a_ || b_);
+                        add_to_sto(Ev(val), sto)
+                    }
+                    _ => panic!("or: bad types"),
+                },
+                PrimOp::Not => match lookup_sto(es, &args_v[0], sto) {
+                    VBool(a_) => {
+                        let val = VBool(!a_);
+                        add_to_sto(Ev(val), sto)
+                    }
+                    _ => panic!("not: bad types"),
+                },
+                PrimOp::Lt => match (
+                    lookup_sto(es, &args_v[0], sto),
+                    lookup_sto(es, &args_v[1], sto),
+                ) {
+                    (VInt(a_), VInt(b_)) => {
+                        let val = VBool(a_ < b_);
+                        add_to_sto(Ev(val), sto)
+                    }
+                    _ => panic!("<: bad types"),
+                },
+                PrimOp::Gt => match (
+                    lookup_sto(es, &args_v[0], sto),
+                    lookup_sto(es, &args_v[1], sto),
+                ) {
+                    (VInt(a_), VInt(b_)) => {
+                        let val = VBool(a_ > b_);
+                        add_to_sto(Ev(val), sto)
+                    }
+                    _ => panic!(">: bad types"),
+                },
                 PrimOp::Null => {
                     let val = match lookup_sto(es, &args_v[0], sto) {
                         VCons(_, _) => VBool(false),
@@ -774,7 +821,7 @@ impl Normalizable for Expr {
         match self {
             Lit(_) | Prim(_) => self.clone(),
 
-            Var(x) => match hm.get(&x) {
+            Var(x) => match hm.get(x) {
                 None => panic!("normalize: free variable: {:?}", x),
                 Some(v) => Var(v.clone()),
             },
