@@ -235,7 +235,7 @@ where
 pub fn reserved() -> Vec<String> {
     [
         "let", "lam", "fix", "true", "false", "if", "null", "pair", "fst", "snd", "cons", "defn",
-        "list", "nil", "head", "tail", "and", "or", "not", ">", "<"
+        "list", "nil", "head", "tail", "and", "or", "not", ">", "<",
     ]
     .iter()
     .map(|x| x.to_string())
