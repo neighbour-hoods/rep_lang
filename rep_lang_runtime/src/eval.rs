@@ -28,6 +28,11 @@ pub struct VRef(usize);
 // TODO assess whether deriving PartialEq is ok. I was manually implementing PartialEq so that it
 // closures would always be non-equal. I don't see we should do that instead of a regular check,
 // other than efficiency concerns.
+/// `R` and `CR` are separate type variables because `FlatValue` must instantiate values and thunks
+/// at different types.
+///
+/// `IValue` instantiates both at `VRef` because they are effectively the same thing when housed in
+/// the `Sto`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
@@ -44,6 +49,7 @@ pub enum Value<R, CR> {
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
+/// see `Value` for commentary on `R` and `CR`.
 pub enum Thunk<M, R, CR> {
     UnevExpr(Expr, TermEnv<CR>),
     Marker(M),
