@@ -15,109 +15,113 @@ where
     // Necessary due to rust-lang/rust#24159
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
-    let l_bool = choice((
-        res_str("true").map(|_| Lit::LBool(true)),
-        (res_str("false").map(|_| Lit::LBool(false))),
-    ));
-    let l_int = (optional(char('-')), integer()).map(|t| {
-        // TODO handle this error, even though it should be impossible
-        let string: String = t.1;
-        let num = string.parse::<i64>().unwrap();
-        match t.0 {
-            Some(_) => Lit::LInt(-num),
-            None => Lit::LInt(num),
-        }
-    });
-    let lit = choice((l_bool, l_int)).map(Expr::Lit);
+    skip_spaces().then(|_| {
 
-    let prim_op = choice((
-        res_str("+").map(|_| PrimOp::Add),
-        res_str("-").map(|_| PrimOp::Sub),
-        res_str("*").map(|_| PrimOp::Mul),
-        res_str("/").map(|_| PrimOp::Div),
-        res_str("==").map(|_| PrimOp::Eql),
-        res_str("and").map(|_| PrimOp::And),
-        res_str("or").map(|_| PrimOp::Or),
-        attempt(res_str("not").map(|_| PrimOp::Not)),
-        res_str("<").map(|_| PrimOp::Lt),
-        res_str(">").map(|_| PrimOp::Gt),
-        attempt(res_str("null").map(|_| PrimOp::Null)),
-        res_str("pair").map(|_| PrimOp::Pair),
-        res_str("fst").map(|_| PrimOp::Fst),
-        res_str("snd").map(|_| PrimOp::Snd),
-        res_str("cons").map(|_| PrimOp::Cons),
-        res_str("nil").map(|_| PrimOp::Nil),
-        res_str("head").map(|_| PrimOp::Head),
-        res_str("tail").map(|_| PrimOp::Tail),
-    ))
-    .map(Expr::Prim);
+        let l_bool = choice((
+            res_str("true").map(|_| Lit::LBool(true)),
+            (res_str("false").map(|_| Lit::LBool(false))),
+        ));
+        let l_int = (optional(char('-')), integer()).map(|t| {
+            // TODO handle this error, even though it should be impossible
+            let string: String = t.1;
+            let num = string.parse::<i64>().unwrap();
+            match t.0 {
+                Some(_) => Lit::LInt(-num),
+                None => Lit::LInt(num),
+            }
+        });
+        let lit = choice((l_bool, l_int)).map(Expr::Lit);
 
-    let app = (expr(), many1::<Vec<_>, _, _>(expr())).map(|t| {
-        let applicator = |fun, arg: Expr| Expr::App(Box::new(fun), Box::new(arg));
-        t.1.into_iter().fold(t.0, applicator)
-    });
+        let prim_op = choice((
+            res_str("+").map(|_| PrimOp::Add),
+            res_str("-").map(|_| PrimOp::Sub),
+            res_str("*").map(|_| PrimOp::Mul),
+            res_str("/").map(|_| PrimOp::Div),
+            res_str("==").map(|_| PrimOp::Eql),
+            res_str("and").map(|_| PrimOp::And),
+            res_str("or").map(|_| PrimOp::Or),
+            attempt(res_str("not").map(|_| PrimOp::Not)),
+            res_str("<").map(|_| PrimOp::Lt),
+            res_str(">").map(|_| PrimOp::Gt),
+            attempt(res_str("null").map(|_| PrimOp::Null)),
+            res_str("pair").map(|_| PrimOp::Pair),
+            res_str("fst").map(|_| PrimOp::Fst),
+            res_str("snd").map(|_| PrimOp::Snd),
+            res_str("cons").map(|_| PrimOp::Cons),
+            res_str("nil").map(|_| PrimOp::Nil),
+            res_str("head").map(|_| PrimOp::Head),
+            res_str("tail").map(|_| PrimOp::Tail),
+        ))
+        .map(Expr::Prim);
 
-    let lam = (
-        res_str("lam"),
-        lex_char('['),
-        many1::<Vec<_>, _, _>(name()),
-        lex_char(']'),
-        expr(),
-    )
-        .map(|t| {
-            let applicator = |bd, nm: Name| Expr::Lam(nm, Box::new(bd));
-            t.2.into_iter().rev().fold(t.4, applicator)
+        let app = (expr(), many1::<Vec<_>, _, _>(expr())).map(|t| {
+            let applicator = |fun, arg: Expr| Expr::App(Box::new(fun), Box::new(arg));
+            t.1.into_iter().fold(t.0, applicator)
         });
 
-    let let_ = {
-        let binder = (lex_char('['), name(), expr(), lex_char(']')).map(|t| (t.1, t.2));
-        (
-            res_str("let"),
-            lex_char('('),
-            many1::<Vec<_>, _, _>(binder),
-            lex_char(')'),
+        let lam = (
+            res_str("lam"),
+            lex_char('['),
+            many1::<Vec<_>, _, _>(name()),
+            lex_char(']'),
             expr(),
         )
             .map(|t| {
-                let applicator = |bd, (nm, e)| Expr::Let(nm, Box::new(e), Box::new(bd));
+                let applicator = |bd, nm: Name| Expr::Lam(nm, Box::new(bd));
                 t.2.into_iter().rev().fold(t.4, applicator)
-            })
-    };
+            });
 
-    // here we introduce a special syntactic form for lists, which we desugar
-    // into successive applications of `cons` to `nil`.
-    let list = (res_str("list"), many::<Vec<_>, _, _>(expr())).map(|t| {
-        let applicator = |ls, e| {
-            let cons = Expr::Prim(PrimOp::Cons);
-            let f = Expr::App(Box::new(cons), Box::new(e));
-            Expr::App(Box::new(f), Box::new(ls))
+        let let_ = {
+            let binder = (lex_char('['), name(), expr(), lex_char(']')).map(|t| (t.1, t.2));
+            (
+                res_str("let"),
+                lex_char('('),
+                many1::<Vec<_>, _, _>(binder),
+                lex_char(')'),
+                expr(),
+            )
+                .map(|t| {
+                    let applicator = |bd, (nm, e)| Expr::Let(nm, Box::new(e), Box::new(bd));
+                    t.2.into_iter().rev().fold(t.4, applicator)
+                })
         };
-        t.1.into_iter()
-            .rev()
-            .fold(Expr::Prim(PrimOp::Nil), applicator)
-    });
 
-    let if_ = (res_str("if"), expr(), expr(), expr())
-        .map(|t| Expr::If(Box::new(t.1), Box::new(t.2), Box::new(t.3)));
+        // here we introduce a special syntactic form for lists, which we desugar
+        // into successive applications of `cons` to `nil`.
+        let list = (res_str("list"), many::<Vec<_>, _, _>(expr())).map(|t| {
+            let applicator = |ls, e| {
+                let cons = Expr::Prim(PrimOp::Cons);
+                let f = Expr::App(Box::new(cons), Box::new(e));
+                Expr::App(Box::new(f), Box::new(ls))
+            };
+            t.1.into_iter()
+                .rev()
+                .fold(Expr::Prim(PrimOp::Nil), applicator)
+        });
 
-    let fix = (res_str("fix"), expr()).map(|t| Expr::Fix(Box::new(t.1)));
+        let if_ = (res_str("if"), expr(), expr(), expr())
+            .map(|t| Expr::If(Box::new(t.1), Box::new(t.2), Box::new(t.3)));
 
-    let parenthesized = choice((
-        attempt(lam),
-        attempt(let_),
-        attempt(list),
-        attempt(if_),
-        attempt(fix),
-        app,
-    ));
+        let fix = (res_str("fix"), expr()).map(|t| Expr::Fix(Box::new(t.1)));
 
-    choice((
-        attempt(lit),
-        attempt(prim_op),
-        attempt(var()),
-        between(lex_char('('), lex_char(')'), parenthesized),
-    ))
-    .skip(skip_spaces())
+        let parenthesized = choice((
+            attempt(lam),
+            attempt(let_),
+            attempt(list),
+            attempt(if_),
+            attempt(fix),
+            app,
+        ));
+
+        choice((
+            attempt(lit),
+            attempt(prim_op),
+            attempt(var()),
+            between(lex_char('('), lex_char(')'), parenthesized),
+        ))
+        .skip(skip_spaces())
+
+    })
 }
 
 // As this expression parser needs to be able to call itself recursively `impl Parser` can't
