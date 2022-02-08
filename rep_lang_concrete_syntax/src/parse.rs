@@ -16,7 +16,6 @@ where
     Input::Error: ParseError<Input::Token, Input::Range, Input::Position>,
 {
     skip_spaces().then(|_| {
-
         let l_bool = choice((
             res_str("true").map(|_| Lit::LBool(true)),
             (res_str("false").map(|_| Lit::LBool(false))),
@@ -120,7 +119,6 @@ where
             between(lex_char('('), lex_char(')'), parenthesized),
         ))
         .skip(skip_spaces())
-
     })
 }
 
