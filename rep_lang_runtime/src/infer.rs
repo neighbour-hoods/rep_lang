@@ -1,7 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::iter;
 
-use rep_lang_core::abstract_syntax::*;
+use rep_lang_core::{
+    abstract_syntax::*,
+    error,
+};
 
 use super::{env::*, types::*};
 
@@ -328,7 +331,7 @@ fn norm_type(hm: &HashMap<Tv, Tv>, ty: Type) -> Type {
         Type::TCon(a) => Type::TCon(a),
         Type::TVar(a) => match hm.get(&a) {
             Some(x) => Type::TVar(x.clone()),
-            None => panic!("norm_type: impossible: type var not in signature"),
+            None => error!("norm_type: impossible: type var not in signature"),
         },
         Type::TList(a) => {
             let a_ = norm_type(hm, *a);
@@ -397,7 +400,7 @@ pub fn unify_many(mut ts_1: Vec<Type>, mut ts_2: Vec<Type>) -> Result<Subst, Typ
                 let subst_2 = unify_many(ts_1, ts_2)?;
                 Ok(compose(subst_2, subst_1))
             }
-            _ => panic!("unify_many: impossible: case handled above"),
+            _ => error!("unify_many: impossible: case handled above"),
         }
     }
 }
