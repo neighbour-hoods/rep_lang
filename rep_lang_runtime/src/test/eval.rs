@@ -2,10 +2,10 @@
 macro_rules! check_eval_expr {
     ( $str: expr, $expected_val: expr ) => {
         match expr().easy_parse(position::Stream::new(&$str[..])) {
-            Err(err) => panic!("parse error:\n\n{}\n", err),
+            Err(err) => error!("parse error:\n\n{}\n", err),
             Ok((expr, extra_input)) => {
                 if extra_input.is_partial() {
-                    panic!("error: unconsumed input: {:?}", extra_input);
+                    error!("error: unconsumed input: {:?}", extra_input);
                 } else {
                     match infer_expr(&Env::new(), &expr) {
                         Ok(_sc) => {
@@ -21,7 +21,7 @@ macro_rules! check_eval_expr {
                                 "interpreted value differs from give expected value"
                             )
                         }
-                        Err(err) => panic!("type error: {:?}", err),
+                        Err(err) => error!("type error: {:?}", err),
                     }
                 }
             }
@@ -56,6 +56,7 @@ pub mod eval_unit {
         vcons,
     };
     use rep_lang_concrete_syntax::parse::expr;
+    use rep_lang_core::error;
 
     fn ifv<M: Clone>(v: Value<VRef, VRef>) -> FlatValue<M> {
         value_to_flat_value(&mut EvalState::new(), &v, &mut Sto::<M>::new())

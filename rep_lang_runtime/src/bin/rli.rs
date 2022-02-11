@@ -2,7 +2,7 @@ use combine::{stream::position, EasyParser, StreamOnce};
 use rustyline::{error::ReadlineError, Editor};
 
 use rep_lang_concrete_syntax::{parse::defn_or_it_expr, util::pretty::to_pretty};
-use rep_lang_core::abstract_syntax::Defn;
+use rep_lang_core::{abstract_syntax::Defn, error};
 
 use rep_lang_runtime::{
     env::*,
@@ -29,7 +29,7 @@ fn main() {
 
     let mut rl = Editor::<()>::new();
     let (width, _height) = match rl.dimensions() {
-        None => panic!("output is not a tty"),
+        None => error!("output is not a tty"),
         Some(dims) => dims,
     };
     let mut type_env = Env::new();

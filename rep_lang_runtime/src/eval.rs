@@ -10,7 +10,7 @@ use std::{
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 use rep_lang_core::{
     abstract_syntax::{gas_of_expr, primop_arity, Defn, Expr, Gas, Lit, Name, PrimOp, Program},
-    app, lam,
+    app, error, lam,
     util::calculate_hash,
 };
 
@@ -173,7 +173,7 @@ impl<M> Default for Sto<M> {
 pub fn lookup_sto<'a, M>(es: &mut EvalState, vr: &VRef, sto: &'a mut Sto<M>) -> IValue {
     let VRef(idx) = *vr;
     match sto.sto_vec.get_mut(idx) {
-        None => panic!("lookup_sto: out of bounds"),
+        None => error!("lookup_sto: out of bounds"),
         Some(CellRedirect(vr2)) => lookup_sto(es, &vr2.clone(), sto),
         Some(CellThunk(thnk)) => match thnk {
             Ev(val) => val.clone(),
@@ -198,7 +198,7 @@ where
 {
     let VRef(idx) = *vr;
     match sto.sto_vec.get_mut(idx) {
-        None => panic!("lookup_sto: out of bounds"),
+        None => error!("lookup_sto: out of bounds"),
         Some(CellRedirect(vr2)) => get_sto(es, &vr2.clone(), sto),
         Some(CellThunk(thnk)) => thnk.clone(),
     }
@@ -463,7 +463,7 @@ macro_rules! primop_binop_int {
                 let val = VInt(a_ $op b_);
                 add_to_sto(Ev(val), $sto)
             }
-            _ => panic!("{}: bad types", $op_name),
+            _ => error!("{}: bad types", $op_name),
         }
     };
 }
@@ -490,7 +490,7 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ == b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => panic!("==: bad types"),
+                    _ => error!("==: bad types"),
                 },
                 PrimOp::And => match (
                     lookup_sto(es, &args_v[0], sto),
@@ -500,7 +500,7 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ && b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => panic!("and: bad types"),
+                    _ => error!("and: bad types"),
                 },
                 PrimOp::Or => match (
                     lookup_sto(es, &args_v[0], sto),
@@ -510,14 +510,14 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ || b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => panic!("or: bad types"),
+                    _ => error!("or: bad types"),
                 },
                 PrimOp::Not => match lookup_sto(es, &args_v[0], sto) {
                     VBool(a_) => {
                         let val = VBool(!a_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => panic!("not: bad types"),
+                    _ => error!("not: bad types"),
                 },
                 PrimOp::Lt => match (
                     lookup_sto(es, &args_v[0], sto),
@@ -527,7 +527,7 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ < b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => panic!("<: bad types"),
+                    _ => error!("<: bad types"),
                 },
                 PrimOp::Gt => match (
                     lookup_sto(es, &args_v[0], sto),
@@ -537,13 +537,13 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ > b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => panic!(">: bad types"),
+                    _ => error!(">: bad types"),
                 },
                 PrimOp::Null => {
                     let val = match lookup_sto(es, &args_v[0], sto) {
                         VCons(_, _) => VBool(false),
                         VNil => VBool(true),
-                        _ => panic!("null: bad types"),
+                        _ => error!("null: bad types"),
                     };
                     add_to_sto(Ev(val), sto)
                 }
@@ -553,11 +553,11 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                 }
                 PrimOp::Fst => match lookup_sto(es, &args_v[0], sto) {
                     VPair(a, _) => a,
-                    _ => panic!("fst: bad types"),
+                    _ => error!("fst: bad types"),
                 },
                 PrimOp::Snd => match lookup_sto(es, &args_v[0], sto) {
                     VPair(_, b) => b,
-                    _ => panic!("snd: bad types"),
+                    _ => error!("snd: bad types"),
                 },
                 PrimOp::Cons => {
                     let val = VCons(args_v[0], args_v[1]);
@@ -565,15 +565,15 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                 }
                 PrimOp::Head => match lookup_sto(es, &args_v[0], sto) {
                     VCons(hd, _tl) => hd,
-                    VNil => panic!("head: called on empty list"),
-                    _ => panic!("head: bad types"),
+                    VNil => error!("head: called on empty list"),
+                    _ => error!("head: bad types"),
                 },
                 PrimOp::Tail => match lookup_sto(es, &args_v[0], sto) {
                     VCons(_hd, tl) => tl,
-                    VNil => panic!("tail: called on empty list"),
-                    _ => panic!("tail: bad types"),
+                    VNil => error!("tail: called on empty list"),
+                    _ => error!("tail: bad types"),
                 },
-                PrimOp::Nil => panic!("nil: application of non-function"),
+                PrimOp::Nil => error!("nil: application of non-function"),
             }
         }
 
@@ -585,7 +585,7 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
             Expr::Lit(Lit::LBool(x)) => add_to_sto(Ev(VBool(*x)), sto),
 
             Expr::Var(x) => match env.get(x) {
-                None => panic!("impossible: free variable: {:?}", x),
+                None => error!("impossible: free variable: {:?}", x),
                 Some(v) => *v,
             },
 
@@ -603,7 +603,7 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                 match lookup_sto(es, &tst_ref, sto) {
                     VBool(true) => eval_(env, sto, es, thn),
                     VBool(false) => eval_(env, sto, es, els),
-                    _ => panic!("impossible: non-bool in test position of if"),
+                    _ => error!("impossible: non-bool in test position of if"),
                 }
             }
 
@@ -651,7 +651,7 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         new_env.insert(nm, arg_thnk_ref);
                         eval_(&new_env, sto, es, &bd)
                     }
-                    _ => panic!("impossible: non-closure in function position of app"),
+                    _ => error!("impossible: non-closure in function position of app"),
                 }
             }
 
@@ -696,7 +696,7 @@ fn primop_apply_case(es: &mut EvalState, expr: &Expr) -> PrimOpApplyCase {
         Some((op, args)) => {
             let delta = primop_arity(&op) - args.len();
             match delta.cmp(&0) {
-                Ordering::Less => panic!(
+                Ordering::Less => error!(
                     "primop_apply_case: impossible: primop {:?} is over-applied",
                     op
                 ),
@@ -828,7 +828,7 @@ impl Normalizable for Expr {
             Lit(_) | Prim(_) => self.clone(),
 
             Var(x) => match hm.get(x) {
-                None => panic!("normalize: free variable: {:?}", x),
+                None => error!("normalize: free variable: {:?}", x),
                 Some(v) => Var(v.clone()),
             },
 

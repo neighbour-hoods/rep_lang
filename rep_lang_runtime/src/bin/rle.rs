@@ -3,6 +3,8 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 
+use rep_lang_core::error;
+
 use rep_lang_concrete_syntax::{parse::program, util::pretty::to_pretty};
 
 use rep_lang_runtime::{
@@ -19,10 +21,10 @@ fn main() -> std::io::Result<()> {
     file.read_to_string(&mut contents)?;
 
     match program().easy_parse(position::Stream::new(&contents[..])) {
-        Err(err) => panic!("parse error:\n\n{}\n", err),
+        Err(err) => error!("parse error:\n\n{}\n", err),
         Ok((prog, extra_input)) => {
             if extra_input.is_partial() {
-                panic!("error: unconsumed input: {:?}", extra_input);
+                error!("error: unconsumed input: {:?}", extra_input);
             } else {
                 // println!("{}", to_pretty(prog.ppr(), width));
                 match infer_program(Env::new(), &prog) {
@@ -45,7 +47,7 @@ fn main() -> std::io::Result<()> {
                         println!("(: {}\n   {}\n)", val_str, ty);
                         Ok(())
                     }
-                    Err(err) => panic!("type error: {:?}", err),
+                    Err(err) => error!("type error: {:?}", err),
                 }
             }
         }
@@ -56,6 +58,6 @@ fn get_fp() -> std::io::Result<String> {
     let args: Vec<String> = env::args().collect();
     match args.as_slice() {
         [_, fp] => Ok(fp.clone()),
-        _ => panic!("wanted one filepath, got {:?}", &args[1..]),
+        _ => error!("wanted one filepath, got {:?}", &args[1..]),
     }
 }
