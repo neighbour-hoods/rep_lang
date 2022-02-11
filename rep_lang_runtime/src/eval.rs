@@ -10,7 +10,7 @@ use std::{
 use rep_lang_concrete_syntax::{sp, util::pretty::parens};
 use rep_lang_core::{
     abstract_syntax::{gas_of_expr, primop_arity, Defn, Expr, Gas, Lit, Name, PrimOp, Program},
-    app, lam, error,
+    app, error, lam,
     util::calculate_hash,
 };
 

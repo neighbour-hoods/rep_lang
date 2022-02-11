@@ -1,10 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter;
 
-use rep_lang_core::{
-    abstract_syntax::*,
-    error,
-};
+use rep_lang_core::{abstract_syntax::*, error};
 
 use super::{env::*, types::*};
 

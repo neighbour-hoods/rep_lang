@@ -55,8 +55,8 @@ pub mod eval_unit {
         infer::*,
         vcons,
     };
-    use rep_lang_core::error;
     use rep_lang_concrete_syntax::parse::expr;
+    use rep_lang_core::error;
 
     fn ifv<M: Clone>(v: Value<VRef, VRef>) -> FlatValue<M> {
         value_to_flat_value(&mut EvalState::new(), &v, &mut Sto::<M>::new())
