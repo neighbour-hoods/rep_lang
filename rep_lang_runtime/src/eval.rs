@@ -757,8 +757,9 @@ where
         match self {
             Ev(val) => Ev(val.normalize(hm, es)),
             UnevExpr(expr, env) => {
-                let expr_norm = expr.normalize(hm, es);
+                // norm env first, so that any remapped Names get mapped in expr
                 let env_norm = env.normalize(hm, es);
+                let expr_norm = expr.normalize(hm, es);
                 UnevExpr(expr_norm, env_norm)
             }
             Marker(m) => Marker(m.clone()),
@@ -775,7 +776,8 @@ where
             .map(|(nm_env, flat_thunk)| {
                 let nm_env_norm = es.fresh_name();
                 hm.insert(nm_env.clone(), nm_env_norm.clone());
-                (nm_env_norm, flat_thunk.normalize(hm, es))
+                // clone hm to avoid "lateral" contagion
+                (nm_env_norm, flat_thunk.normalize(&mut hm.clone(), es))
             })
             .collect()
     }
@@ -809,12 +811,14 @@ where
                 VClosure(nm_norm, bd_norm, env_norm)
             }
             VCons(x, y) => {
-                let x_norm = Box::new(x.normalize(hm, es));
+                // clone hm to avoid "lateral" contagion
+                let x_norm = Box::new(x.normalize(&mut hm.clone(), es));
                 let y_norm = Box::new(y.normalize(hm, es));
                 VCons(x_norm, y_norm)
             }
             VPair(x, y) => {
-                let x_norm = Box::new(x.normalize(hm, es));
+                // clone hm to avoid "lateral" contagion
+                let x_norm = Box::new(x.normalize(&mut hm.clone(), es));
                 let y_norm = Box::new(y.normalize(hm, es));
                 VPair(x_norm, y_norm)
             }
