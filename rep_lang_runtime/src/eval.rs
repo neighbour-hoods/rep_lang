@@ -76,10 +76,15 @@ pub fn inject_flatvalue_to_flatthunk<M>(flat_val: FlatValue<M>) -> FlatThunk<M> 
         VBool(x) => fte!(VBool(x)),
         VClosure(nm, bd, env) => fte!(VClosure(nm, bd, env)),
         VNil => fte!(VNil),
-        VCons(x, y) | VPair(x, y) => {
+        VCons(x, y) => {
             let x_ft = inject_flatvalue_to_flatthunk(*x);
             let y_ft = inject_flatvalue_to_flatthunk(*y);
             fte!(VCons(Box::new(x_ft), Box::new(y_ft)))
+        }
+        VPair(x, y) => {
+            let x_ft = inject_flatvalue_to_flatthunk(*x);
+            let y_ft = inject_flatvalue_to_flatthunk(*y);
+            fte!(VPair(Box::new(x_ft), Box::new(y_ft)))
         }
     }
 }
