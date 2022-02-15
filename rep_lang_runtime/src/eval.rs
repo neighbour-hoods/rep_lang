@@ -463,7 +463,7 @@ macro_rules! primop_binop_int {
                 let val = VInt(a_ $op b_);
                 add_to_sto(Ev(val), $sto)
             }
-            _ => error!("{}: bad types", $op_name),
+            bad => error!("{}: bad types: {:?}", $op_name, bad),
         }
     };
 }
@@ -490,7 +490,7 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ == b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => error!("==: bad types"),
+                    bad => error!("==: bad types: {:?}", bad),
                 },
                 PrimOp::And => match (
                     lookup_sto(es, &args_v[0], sto),
@@ -500,7 +500,7 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ && b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => error!("and: bad types"),
+                    bad => error!("and: bad types: {:?}", bad),
                 },
                 PrimOp::Or => match (
                     lookup_sto(es, &args_v[0], sto),
@@ -510,14 +510,14 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ || b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => error!("or: bad types"),
+                    bad => error!("or: bad types: {:?}", bad),
                 },
                 PrimOp::Not => match lookup_sto(es, &args_v[0], sto) {
                     VBool(a_) => {
                         let val = VBool(!a_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => error!("not: bad types"),
+                    bad => error!("not: bad types: {:?}", bad),
                 },
                 PrimOp::Lt => match (
                     lookup_sto(es, &args_v[0], sto),
@@ -527,7 +527,7 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ < b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => error!("<: bad types"),
+                    bad => error!("<: bad types: {:?}", bad),
                 },
                 PrimOp::Gt => match (
                     lookup_sto(es, &args_v[0], sto),
@@ -537,13 +537,13 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                         let val = VBool(a_ > b_);
                         add_to_sto(Ev(val), sto)
                     }
-                    _ => error!(">: bad types"),
+                    bad => error!(">: bad types: {:?}", bad),
                 },
                 PrimOp::Null => {
                     let val = match lookup_sto(es, &args_v[0], sto) {
                         VCons(_, _) => VBool(false),
                         VNil => VBool(true),
-                        _ => error!("null: bad types"),
+                        bad => error!("null: bad types: {:?}", bad),
                     };
                     add_to_sto(Ev(val), sto)
                 }
@@ -553,11 +553,11 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                 }
                 PrimOp::Fst => match lookup_sto(es, &args_v[0], sto) {
                     VPair(a, _) => a,
-                    _ => error!("fst: bad types"),
+                    bad => error!("fst: bad types: {:?}", bad),
                 },
                 PrimOp::Snd => match lookup_sto(es, &args_v[0], sto) {
                     VPair(_, b) => b,
-                    _ => error!("snd: bad types"),
+                    bad => error!("snd: bad types: {:?}", bad),
                 },
                 PrimOp::Cons => {
                     let val = VCons(args_v[0], args_v[1]);
@@ -566,12 +566,12 @@ pub fn eval_<M>(env: &ITermEnv, sto: &mut Sto<M>, es: &mut EvalState, expr: &Exp
                 PrimOp::Head => match lookup_sto(es, &args_v[0], sto) {
                     VCons(hd, _tl) => hd,
                     VNil => error!("head: called on empty list"),
-                    _ => error!("head: bad types"),
+                    bad => error!("head: bad types: {:?}", bad),
                 },
                 PrimOp::Tail => match lookup_sto(es, &args_v[0], sto) {
                     VCons(_hd, tl) => tl,
                     VNil => error!("tail: called on empty list"),
-                    _ => error!("tail: bad types"),
+                    bad => error!("tail: bad types: {:?}", bad),
                 },
                 PrimOp::Nil => error!("nil: application of non-function"),
             }
