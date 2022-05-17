@@ -17,14 +17,14 @@
 
         overlays = [
           (import rust-overlay)
-          (import "${cargo2nix}/overlay")
+          cargo2nix.overlay
         ];
 
         pkgs = import nixpkgs {
           inherit system overlays;
         };
 
-        rustVersion = "1.54.0";
+        rustVersion = "1.59.0";
 
       in
 
