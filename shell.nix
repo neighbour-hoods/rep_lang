@@ -1,21 +1,9 @@
-let
-  sources = import ./nix/sources.nix;
-  rust-overlay = import sources.rust-overlay;
-  cargo2nix = (import sources.cargo2nix { }).package;
-in
-
-{ system ? builtins.currentSystem
-, pkgs ? import sources.nixpkgs {
-    inherit system;
-    overlays = [
-      rust-overlay
-    ];
-  }
-}:
-
-pkgs.mkShell {
-  buildInputs = with pkgs; [
-    cargo2nix
-    rust-bin.stable.latest.default
-  ];
-}
+(import (
+  let
+    lock = builtins.fromJSON (builtins.readFile ./flake.lock);
+  in fetchTarball {
+    url = "https://github.com/edolstra/flake-compat/archive/${lock.nodes.flake-compat.locked.rev}.tar.gz";
+    sha256 = lock.nodes.flake-compat.locked.narHash; }
+) {
+  src =  ./.;
+}).shellNix.default
