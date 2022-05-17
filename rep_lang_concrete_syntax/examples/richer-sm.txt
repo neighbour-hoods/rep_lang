@@ -1,0 +1,19 @@
+(tag, value)
+
+# unreviewed
+(0, _)
+1 -> (1, 1)
+2 -> (1, -1)
+
+# voting
+(1, count)
+1 -> adds 1 to count
+2 -> subs 1 from count
+threshold > +5 for count -> (2, 0)
+threshold < -5 for count -> (3, 0)
+
+# accepted
+(2, _)
+
+# rejected
+(3, _)
