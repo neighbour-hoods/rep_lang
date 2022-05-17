@@ -10,7 +10,7 @@ license-file = "../LICENSE"
 [dependencies]
 byteorder = "1.4.3"
 combine = "4.5.2"
-hdk = { version = "0.0.117", optional = true }
+hdk = { version = "0.0.131", optional = true }
 holochain_serialized_bytes_derive = { version = "0.0.51", optional = true }
 pretty = "0.10.0"
 rustyline = "6.3.0"
