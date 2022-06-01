@@ -23,6 +23,7 @@ jobs:
       with:
         name: neighbourhoods
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - uses: Swatinem/rust-cache@v1
     - run: nix-shell --command "cd rep_lang_concrete_syntax && CARGO_TARGET_DIR=../target cargo test --verbose"
     - run: nix-shell --command "cd rep_lang_core && CARGO_TARGET_DIR=../target cargo test --verbose"
     - run: nix-shell --command "cd rep_lang_runtime && CARGO_TARGET_DIR=../target cargo test --verbose"
@@ -40,6 +41,7 @@ jobs:
       with:
         name: neighbourhoods
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - uses: Swatinem/rust-cache@v1
     - run: nix-shell --command "cd rep_lang_concrete_syntax && CARGO_TARGET_DIR=../target cargo fmt -- --check"
     - run: nix-shell --command "cd rep_lang_core && CARGO_TARGET_DIR=../target cargo fmt -- --check"
     - run: nix-shell --command "cd rep_lang_runtime && CARGO_TARGET_DIR=../target cargo fmt -- --check"
