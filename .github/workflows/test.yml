@@ -15,7 +15,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2.4.0
     - uses: cachix/install-nix-action@v15
-    - run: nix flake check
+    - run: nix-shell --command "cd rep_lang_concrete_syntax && CARGO_TARGET_DIR=../target cargo test --verbose"
+    - run: nix-shell --command "cd rep_lang_core && CARGO_TARGET_DIR=../target cargo test --verbose"
+    - run: nix-shell --command "cd rep_lang_runtime && CARGO_TARGET_DIR=../target cargo test --verbose"
 
 #   test:
 #     name: test with Rust ${{ matrix.rust }} on ${{ matrix.os }}
