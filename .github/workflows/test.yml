@@ -17,7 +17,7 @@ jobs:
     - uses: cachix/install-nix-action@v15
       with:
         extra_nix_config: |
-          trusted-public-keys = cache.holo.host-1:lNXIXtJgS9Iuw4Cu6X0HINLu9sTfcjEntnrgwMQIMcE= cache.holo.host-2:ZJCkX3AUYZ8soxTLfTb60g+F3MkWD7hkH9y8CgqwhDQ= holochain-ci.cachix.org-1:5IUSkZc0aoRS53rfkvH9Kid40NpyjwCMCzwRTXy+QN8=
+          trusted-public-keys = cache.holo.host-1:lNXIXtJgS9Iuw4Cu6X0HINLu9sTfcjEntnrgwMQIMcE= cache.holo.host-2:ZJCkX3AUYZ8soxTLfTb60g+F3MkWD7hkH9y8CgqwhDQ= holochain-ci.cachix.org-1:5IUSkZc0aoRS53rfkvH9Kid40NpyjwCMCzwRTXy+QN8= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           substituters = https://cache.holo.host https://holochain-ci.cachix.org https://cache.nixos.org/
     - run: nix-shell --command "cd rep_lang_concrete_syntax && CARGO_TARGET_DIR=../target cargo test --verbose"
     - run: nix-shell --command "cd rep_lang_core && CARGO_TARGET_DIR=../target cargo test --verbose"
