@@ -15,7 +15,7 @@
         pkgs = nh-nix-env.values.${system}.pkgs;
       in
       {
-        devShells.default = nh-nix-env.shells.${system}.rustDevShell {};
+        devShell = nh-nix-env.shells.${system}.rustDevShell {};
 
         # warning: this is broken due to
         # https://github.com/nix-community/naersk/issues/133
