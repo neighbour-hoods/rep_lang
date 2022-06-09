@@ -1,6 +1,6 @@
 {
   inputs = {
-    nh-nix-env.url = "github:neighbour-hoods/nh-nix-env";
+    nh-nix-env.url = "github:neighbour-hoods/nh-nix-env?rev=c13948221828112c03ea720905cb964584835e37";
   };
 
   outputs = { nh-nix-env, ... }:
