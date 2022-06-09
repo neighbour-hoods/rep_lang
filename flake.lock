@@ -143,17 +143,16 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1654805938,
+        "lastModified": 1654809271,
         "narHash": "sha256-eJVvIhK+b78FVw3r6hFDBJoL/wktUx4BnNm9QF5yIxQ=",
         "owner": "neighbour-hoods",
         "repo": "nh-nix-env",
-        "rev": "c13948221828112c03ea720905cb964584835e37",
+        "rev": "71cc7d68605a548be5d9262f00dc78ce8f4c7ca2",
         "type": "github"
       },
       "original": {
         "owner": "neighbour-hoods",
         "repo": "nh-nix-env",
-        "rev": "c13948221828112c03ea720905cb964584835e37",
         "type": "github"
       }
     },
