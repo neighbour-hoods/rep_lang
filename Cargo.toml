@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "rep_lang_concrete_syntax",
+  "rep_lang_core",
+  "rep_lang_runtime",
+]
