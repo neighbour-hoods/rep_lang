@@ -24,7 +24,6 @@ quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 
 [features]
-default = [ "rustyline/default" ]
 hc = ["hdk", "holochain_serialized_bytes_derive", "serde", "rep_lang_core/hc", "rustyline/custom-bindings", "rustyline/with-dirs" ]
 
 [[bin]]
