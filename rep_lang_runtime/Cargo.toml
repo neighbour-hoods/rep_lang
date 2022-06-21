@@ -8,20 +8,19 @@ license-file = "../LICENSE"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-byteorder = "1.4.3"
-combine = "4.5.2"
+combine = "4.6.4"
 hdk = { version = "0.0.136", optional = true }
 holochain_serialized_bytes_derive = { version = "0.0.51", optional = true }
-pretty = "0.10.0"
-rustyline = "6.3.0"
+pretty = "0.11.3"
+rustyline = "9.1.2"
 serde = { version = "1.0", optional = true }
 
 rep_lang_core = { path = "../rep_lang_core" }
 rep_lang_concrete_syntax = { path = "../rep_lang_concrete_syntax" }
 
 [dev-dependencies]
-quickcheck = "0.9.2"
-quickcheck_macros = "0.9.1"
+quickcheck = "1.0.3"
+quickcheck_macros = "1.0.0"
 
 [features]
 hc = ["hdk", "holochain_serialized_bytes_derive", "serde", "rep_lang_core/hc"]

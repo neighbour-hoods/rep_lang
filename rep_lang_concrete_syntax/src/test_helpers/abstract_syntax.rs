@@ -11,7 +11,7 @@ use crate::parse::reserved;
 pub struct WrappedExpr(pub Expr);
 
 impl Arbitrary for WrappedExpr {
-    fn arbitrary<G: Gen>(g: &mut G) -> WrappedExpr {
+    fn arbitrary(g: &mut Gen) -> WrappedExpr {
         WrappedExpr(arbitrary_expr(g, &reserved()))
     }
 

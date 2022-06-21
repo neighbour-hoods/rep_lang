@@ -21,13 +21,14 @@ where
             (res_str("false").map(|_| Lit::LBool(false))),
         ));
         let l_int = (optional(char('-')), integer()).map(|t| {
-            // TODO handle this error, even though it should be impossible
-            let string: String = t.1;
-            let num = string.parse::<i64>().unwrap();
-            match t.0 {
-                Some(_) => Lit::LInt(-num),
-                None => Lit::LInt(num),
-            }
+            let string: String = match t.0 {
+                Some(_) => format!("-{}", t.1),
+                None => t.1,
+            };
+            let num = string
+                .parse::<i64>()
+                .expect("expr_ parser: impossible: i64 parse failed");
+            Lit::LInt(num)
         });
         let lit = choice((l_bool, l_int)).map(Expr::Lit);
 
