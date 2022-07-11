@@ -13,7 +13,7 @@ getrandom = { version = "0.2", features = ["js"] }
 hdk = { version = "0.0.136", optional = true }
 holochain_serialized_bytes_derive = { version = "0.0.51", optional = true }
 pretty = "0.11.3"
-rustyline = { git = "https://github.com/neighbour-hoods/rustyline", branch = "acs/wasm-web-support", default-features = false }
+rustyline = "6.3.0"
 serde = { version = "1.0", optional = true }
 
 rep_lang_core = { path = "../rep_lang_core" }
@@ -24,7 +24,7 @@ quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 
 [features]
-hc = ["hdk", "holochain_serialized_bytes_derive", "serde", "rep_lang_core/hc", "rustyline/custom-bindings", "rustyline/with-dirs" ]
+hc = ["hdk", "holochain_serialized_bytes_derive", "serde", "rep_lang_core/hc" ]
 
 [[bin]]
 name = "rli"
