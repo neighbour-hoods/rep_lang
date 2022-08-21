@@ -9,7 +9,7 @@ license-file = "../LICENSE"
 
 [dependencies]
 combine = "4.6.4"
-hdk = { version = "0.0.136", optional = true }
+hdk = { version = "0.0.147", optional = true }
 holochain_serialized_bytes_derive = { version = "0.0.51", optional = true }
 pretty = "0.11.3"
 rustyline = { git = "https://github.com/neighbour-hoods/rustyline", branch = "acs/wasm-web-support", default-features = false }
