@@ -1,3 +1,5 @@
+//! `rep_lang`'s concrete syntax.
+
 // TODO should this go here?
 #[cfg(test)]
 extern crate quickcheck;

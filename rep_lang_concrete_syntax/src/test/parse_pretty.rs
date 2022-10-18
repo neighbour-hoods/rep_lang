@@ -1,3 +1,5 @@
+//! unit tests as well as round-trip property tests.
+
 macro_rules! check_parse_expr {
     ( $a: expr, $b: expr ) => {
         let result = expr().easy_parse(position::Stream::new(&$a[..]));

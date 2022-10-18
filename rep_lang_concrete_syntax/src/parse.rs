@@ -1,3 +1,5 @@
+//! parsing concrete syntax to abstract syntax.
+
 use combine::error::{ParseError, StreamError};
 use combine::parser::char::{alpha_num, char, digit, letter, spaces, string};
 use combine::stream::{position::SourcePosition, Stream, StreamErrorFor};

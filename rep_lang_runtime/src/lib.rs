@@ -1,3 +1,5 @@
+//! `rep_lang` interpreter functionality.
+
 // TODO should this go here?
 #[cfg(test)]
 extern crate quickcheck;

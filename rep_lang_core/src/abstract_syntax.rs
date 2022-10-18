@@ -1,11 +1,15 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+/// wrapper around `String`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Name(pub String);
 
+/// `Expr` is the core type of `rep_lang`. expressions can contain other
+/// expressions, and this type defines what can be expressed in the language.
+/// inspired by the lambda calculus.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
@@ -20,9 +24,13 @@ pub enum Expr {
     Prim(PrimOp),
 }
 
+/// a notion of how expensive it is to compute an expression. see Ethereum's
+/// notion of gas for context.
 pub type Gas = u64;
 
 use Expr::*;
+/// this is stubbed out with all 1s and should be made more complex for any
+/// real networked model of computation.
 pub fn gas_of_expr(expr: &Expr) -> Gas {
     match expr {
         Var(_) => 1,
@@ -36,6 +44,7 @@ pub fn gas_of_expr(expr: &Expr) -> Gas {
     }
 }
 
+/// construct an application of 2 exprs.
 #[macro_export]
 macro_rules! app {
     ( $a: expr, $b: expr ) => {
@@ -43,6 +52,7 @@ macro_rules! app {
     };
 }
 
+/// construct a lambda.
 #[macro_export]
 macro_rules! lam {
     ( $a: expr, $b: expr ) => {
@@ -50,6 +60,7 @@ macro_rules! lam {
     };
 }
 
+/// literal value.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
@@ -58,6 +69,7 @@ pub enum Lit {
     LBool(bool),
 }
 
+/// primitive operation.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
@@ -82,11 +94,13 @@ pub enum PrimOp {
     Gt,
 }
 
+/// definition: pairing a name with an expr. this is not much-used.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]
 pub struct Defn(pub Name, pub Expr);
 
+/// program: a list of definitions with an expr "main". this is not much-used.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "holochain_serialized_bytes", derive(SerializedBytes))]

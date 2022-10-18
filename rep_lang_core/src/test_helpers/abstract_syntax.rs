@@ -1,3 +1,5 @@
+//! arbitrary generators for key abstract syntax types.
+
 use quickcheck::{empty_shrinker, single_shrinker, Arbitrary, Gen};
 use rand::Rng;
 use std::iter;
@@ -63,15 +65,13 @@ impl Arbitrary for Expr {
     }
 }
 
-// I am pulling this out as a separate function because I do not see built-in infrastructure for
-// modifying size parameters, a la Haskell-Quickcheck:
-//
-// https://hackage.haskell.org/package/QuickCheck-2.14.1/docs/Test-QuickCheck.html#v:scale
-//
-// we want this because generating a recursive type without a "reduction" in the size parameter
-// for recursive calls will likely lead to unpredictably sized (potentially very large) `Expr`s.
-// by passing an explicit size parameter, we can implement this directly - dividing the size
-// parameter as we recur, and terminating when it hits a bound.
+/// I am pulling this out as a separate function because I do not see built-in infrastructure for
+/// modifying size parameters, a la Haskell-Quickcheck:
+/// <https://hackage.haskell.org/package/QuickCheck-2.14.1/docs/Test-QuickCheck.html#v:scale>
+/// we want this because generating a recursive type without a "reduction" in the size parameter
+/// for recursive calls will likely lead to unpredictably sized (potentially very large) `Expr`s.
+/// by passing an explicit size parameter, we can implement this directly - dividing the size
+/// parameter as we recur, and terminating when it hits a bound.
 #[allow(dead_code)]
 pub fn gen_expr<G: Gen>(g: &mut G, size: usize, reserved: &[String]) -> Expr {
     let upper_bound = if size < 1 { 3 } else { 8 };

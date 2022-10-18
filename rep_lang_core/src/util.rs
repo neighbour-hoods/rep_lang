@@ -7,6 +7,8 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
+/// an `error` macro which gives a better stacktrace when run in Holochain,
+/// on wasm.
 #[macro_export]
 #[cfg(feature = "hc")]
 macro_rules! error {
@@ -15,6 +17,8 @@ macro_rules! error {
     }});
 }
 
+/// an `error` macro which gives a better stacktrace when run in Holochain,
+/// on wasm.
 #[macro_export]
 #[cfg(not(feature = "hc"))]
 macro_rules! error {

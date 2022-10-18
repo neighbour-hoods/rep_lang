@@ -1,3 +1,5 @@
+//! rendering abstract syntax to concrete syntax.
+
 // TODO remember + document why these are not implemented as `ppr` trait
 // instances as in `eval`.
 
